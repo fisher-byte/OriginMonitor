@@ -75,7 +75,8 @@ OriginMonitor/
     ├── architecture.md     # 架构设计
     ├── bot-database.md     # 爬虫识别库
     ├── experience.md       # 经验总结
-    └── changelog.md        # 更新日志
+    ├── changelog.md        # 更新日志
+    └── sop.md              # 代码更新标准流程
 ```
 
 ## 测试

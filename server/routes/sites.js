@@ -34,4 +34,18 @@ router.get('/:id', (req, res) => {
   res.json({ success: true, data: site });
 });
 
+// 删除网站
+router.delete('/:id', (req, res) => {
+  const db = getDb();
+  const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(req.params.id);
+  if (!site) return res.status(404).json({ error: 'site not found' });
+
+  db.prepare('DELETE FROM page_events WHERE site_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM request_events WHERE site_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM daily_stats WHERE site_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM sites WHERE id = ?').run(req.params.id);
+
+  res.json({ success: true });
+});
+
 module.exports = router;

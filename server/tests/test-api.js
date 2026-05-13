@@ -65,6 +65,28 @@ async function testSites() {
   assert('名称正确', detail.body.data.name === '测试站');
 }
 
+async function testSiteDelete() {
+  // 创建一个临时站点用于删除测试
+  console.log('\n[21] POST /api/sites — 创建临时站点（删除测试）');
+  const create = await request('POST', '/api/sites', { name: '待删除站', domain: 'delete-me.com' });
+  assert('状态码 200', create.status === 200);
+  assert('返回 site_id', typeof create.body.site_id === 'string');
+  const tmpId = create.body.site_id;
+
+  console.log('\n[22] DELETE /api/sites/:id — 删除站点');
+  const del = await request('DELETE', `/api/sites/${tmpId}`);
+  assert('状态码 200', del.status === 200);
+  assert('返回 success', del.body.success === true);
+
+  console.log('\n[23] GET /api/sites/:id — 删除后查询返回 404');
+  const check = await request('GET', `/api/sites/${tmpId}`);
+  assert('状态码 404', check.status === 404);
+
+  console.log('\n[24] DELETE /api/sites/:id — 删除不存在的站点');
+  const delBad = await request('DELETE', '/api/sites/non-existent-id');
+  assert('状态码 404', delBad.status === 404);
+}
+
 async function testCollect() {
   console.log('\n[4] POST /api/collect — 缺少 site_id');
   const noId = await request('POST', '/api/collect', { page_url: '/' });
@@ -195,6 +217,7 @@ async function run() {
 
   try {
     await testSites();
+    await testSiteDelete();
     await testCollect();
     // 等一下让数据写入
     await new Promise(r => setTimeout(r, 200));

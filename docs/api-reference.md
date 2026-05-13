@@ -182,3 +182,15 @@ PV/UV 趋势。
 ### GET /api/sites
 
 获取网站列表。
+
+### DELETE /api/sites/:id
+
+删除网站及其所有关联数据（page_events、request_events、daily_stats）。
+
+**响应：**
+```json
+{ "success": true }
+```
+
+**错误：**
+- 404：网站不存在
