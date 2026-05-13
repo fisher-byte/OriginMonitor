@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor - 爬虫 & 访客监控</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-sec: #f7f7f5;
+      --border: #e0e0e0;
+      --text: #37352f;
+      --muted: #787774;
+      --accent: #e16b16;
+      --blue: #2e86de;
+      --green: #2ea043;
+      --red: #d44c47;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+    .header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 0.5rem; }
+    .header h1::before { content: ""; width: 6px; height: 1.2em; background: var(--accent); border-radius: 2px; }
+
+    .site-select {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+    .tab {
+      padding: 0.8rem 1.5rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .controls select, .controls button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      background: #fff;
+      cursor: pointer;
+    }
+    .controls button { background: var(--text); color: #fff; border: none; font-weight: 500; }
+    .controls button:hover { opacity: 0.85; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metric-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      background: #fff;
+    }
+    .metric-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-size: 1.8rem; font-weight: 700; font-family: "JetBrains Mono", monospace; margin-top: 0.3rem; }
+    .metric-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 800px) { .chart-row { grid-template-columns: 1fr; } }
+
+    .chart-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      background: #fff;
+    }
+    .chart-box h3 { font-size: 0.9rem; margin-bottom: 0.8rem; color: var(--text); }
+    .chart-box .chart { height: 280px; }
+
+    .table-box {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .table-box h3 {
+      font-size: 0.9rem;
+      padding: 0.8rem 1rem;
+      background: var(--bg-sec);
+      border-bottom: 1px solid var(--border);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--muted); background: var(--bg-sec); border-bottom: 1px solid var(--border); }
+    td { padding: 0.6rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #f0f0f0; }
+    tr:hover { background: #fafafa; }
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .badge-bot { background: #fff3e0; color: var(--accent); }
+    .badge-human { background: #e8f5e9; color: var(--green); }
+
+    .realtime-list { max-height: 400px; overflow-y: auto; }
+    .rt-item {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .rt-item:last-child { border-bottom: none; }
+    .rt-bot { font-weight: 600; color: var(--accent); }
+    .rt-time { color: var(--muted); font-size: 0.75rem; }
+    .rt-url { color: var(--muted); font-size: 0.8rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Monitor</h1>
+    <div style="display:flex;gap:0.8rem;align-items:center;">
+      <select class="site-select" id="siteSelect"><option value="">选择网站...</option></select>
+      <button onclick="showAddSite()" style="padding:0.5rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">+ 添加网站</button>
+    </div>
+  </div>
+
+  <!-- 添加网站弹窗 -->
+  <div id="addSiteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:1000;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:2rem;width:400px;">
+      <h3 style="margin-bottom:1rem;">添加网站</h3>
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.85rem;color:var(--muted);margin-bottom:0.3rem;">网站名称</label>
+        <input id="newSiteName" type="text" placeholder="我的网站" style="width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:4px;font-size:0.9rem;">
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <label style="display:block;font-size:0.85rem;color:var(--muted);margin-bottom:0.3rem;">域名（可选）</label>
+        <input id="newSiteDomain" type="text" placeholder="example.com" style="width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:4px;font-size:0.9rem;">
+      </div>
+      <div style="display:flex;gap:0.8rem;justify-content:flex-end;">
+        <button onclick="closeAddSite()" style="padding:0.5rem 1rem;border:1px solid var(--border);border-radius:4px;background:#fff;cursor:pointer;">取消</button>
+        <button onclick="createSite()" style="padding:0.5rem 1rem;background:var(--text);color:#fff;border:none;border-radius:4px;cursor:pointer;">创建</button>
+      </div>
+      <div id="addSiteResult" style="margin-top:0.8rem;font-size:0.85rem;"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-panel="crawler">爬虫监控</div>
+    <div class="tab" data-panel="visitor">访客分析</div>
+  </div>
+
+  <div class="container">
+    <!-- 爬虫监控面板 -->
+    <div class="panel active" id="panel-crawler">
+      <div class="controls">
+        <select id="crawlerDays">
+          <option value="7">最近 7 天</option>
+          <option value="30" selected>最近 30 天</option>
+          <option value="90">最近 90 天</option>
+        </select>
+        <button onclick="loadCrawler()">刷新</button>
+      </div>
+
+      <div class="metrics" id="crawlerMetrics"></div>
+
+      <div class="chart-row">
+        <div class="chart-box">
+          <h3>爬虫访问趋势</h3>
+          <div class="chart" id="chartCrawlerTrend"></div>
+        </div>
+        <div class="chart-box">
+          <h3>爬虫家族分布</h3>
+          <div class="chart" id="chartBotFamily"></div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="table-box">
+          <h3>实时爬虫活动（最近 5 分钟）</h3>
+          <div class="realtime-list" id="realtimeList"><div class="empty">暂无数据</div></div>
+        </div>
+        <div class="table-box">
+          <h3>爬虫排名</h3>
+          <table>
+            <thead><tr><th>爬虫</th><th>家族</th><th>访问次数</th><th>覆盖页面</th></tr></thead>
+            <tbody id="botRankBody"><tr><td colspan="4" class="empty">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-box">
+        <h3>页面爬取排名</h3>
+        <table>
+          <thead><tr><th>页面</th><th>爬虫访问</th><th>人类访问</th><th>主要爬虫</th></tr></thead>
+          <tbody id="pageRankBody"><tr><td colspan="4" class="empty">暂无数据</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 访客分析面板 -->
+    <div class="panel" id="panel-visitor">
+      <div class="controls">
+        <select id="visitorDays">
+          <option value="1">今天</option>
+          <option value="7">最近 7 天</option>
+          <option value="30" selected>最近 30 天</option>
+        </select>
+        <button onclick="loadVisitor()">刷新</button>
+      </div>
+
+      <div class="metrics" id="visitorMetrics"></div>
+
+      <div class="chart-row">
+        <div class="chart-box">
+          <h3>PV / UV 趋势</h3>
+          <div class="chart" id="chartVisitorTrend"></div>
+        </div>
+        <div class="chart-box">
+          <h3>设备分布</h3>
+          <div class="chart" id="chartDevices"></div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="table-box">
+          <h3>流量来源 Top</h3>
+          <table>
+            <thead><tr><th>来源</th><th>访问次数</th></tr></thead>
+            <tbody id="referrerBody"><tr><td colspan="2" class="empty">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-box">
+          <h3>热门页面</h3>
+          <table>
+            <thead><tr><th>页面</th><th>访问次数</th></tr></thead>
+            <tbody id="hotPageBody"><tr><td colspan="2" class="empty">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var API = window.location.origin + '/api';
+    var currentSiteId = '';
+
+    // --- Tab 切换 ---
+    document.querySelectorAll('.tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+      });
+    });
+
+    // --- 加载网站列表 ---
+    function loadSites() {
+      fetch(API + '/sites').then(function(r) { return r.json(); }).then(function(json) {
+        var sel = document.getElementById('siteSelect');
+        (json.data || []).forEach(function(s) {
+          var opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name + (s.domain ? ' (' + s.domain + ')' : '');
+          sel.appendChild(opt);
+        });
+        if (json.data && json.data.length > 0) {
+          currentSiteId = json.data[0].id;
+          sel.value = currentSiteId;
+          loadCrawler();
+          loadVisitor();
+        } else {
+          document.getElementById('crawlerMetrics').innerHTML = '<div class="empty">还没有网站，点击右上角"+ 添加网站"开始</div>';
+          document.getElementById('visitorMetrics').innerHTML = '<div class="empty">还没有网站，点击右上角"+ 添加网站"开始</div>';
+        }
+      });
+      document.getElementById('siteSelect').addEventListener('change', function() {
+        currentSiteId = this.value;
+        if (currentSiteId) { loadCrawler(); loadVisitor(); }
+      });
+    }
+
+    // --- 爬虫监控 ---
+    function loadCrawler() {
+      if (!currentSiteId) return;
+      var days = document.getElementById('crawlerDays').value;
+      var hours = days * 24;
+
+      // 概览
+      fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          var d = json.data || {};
+          document.getElementById('crawlerMetrics').innerHTML =
+            metricCard('总 PV', d.total_pv || 0, '') +
+            metricCard('爬虫 PV', d.bot_pv || 0, 'AI/搜索引擎') +
+            metricCard('人类 PV', d.human_pv || 0, '真实用户') +
+            metricCard('独立访客', d.uv || 0, 'UV');
+        });
+
+      // 趋势
+      fetch(API + '/dashboard/trend?site_id=' + currentSiteId + '&days=' + days)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderCrawlerTrend(json.data || []); });
+
+      // 爬虫排名
+      fetch(API + '/dashboard/bots?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderBotRank(json.data || []); });
+
+      // 页面排名
+      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderPageRank(json.data || []); });
+
+      // 实时
+      fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=5')
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderRealtime(json.data || []); });
+    }
+
+    function renderCrawlerTrend(data) {
+      var chart = echarts.init(document.getElementById('chartCrawlerTrend'));
+      chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['爬虫', '人类'], bottom: 0 },
+        grid: { top: 20, bottom: 40, left: 50, right: 20 },
+        xAxis: { type: 'category', data: data.map(function(d) { return d.day; }), boundaryGap: false },
+        yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+        series: [
+          { name: '爬虫', type: 'line', data: data.map(function(d) { return d.bot; }), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#e16b16' } },
+          { name: '人类', type: 'line', data: data.map(function(d) { return d.human; }), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#2e86de' } }
+        ]
+      });
+      window.addEventListener('resize', function() { chart.resize(); });
+    }
+
+    function renderBotRank(data) {
+      var body = document.getElementById('botRankBody');
+      if (!data.length) { body.innerHTML = '<tr><td colspan="4" class="empty">暂无数据</td></tr>'; return; }
+      body.innerHTML = data.map(function(b) {
+        return '<tr><td><span class="badge badge-bot">' + esc(b.bot_name) + '</span></td><td>' + esc(b.bot_family) + '</td><td>' + b.count + '</td><td>' + b.unique_pages + '</td></tr>';
+      }).join('');
+      renderBotFamilyChart(data);
+    }
+
+    function renderBotFamilyChart(data) {
+      var families = {};
+      data.forEach(function(b) {
+        families[b.bot_family] = (families[b.bot_family] || 0) + b.count;
+      });
+      var pieData = Object.keys(families).map(function(k) { return { name: k, value: families[k] }; });
+      var chart = echarts.init(document.getElementById('chartBotFamily'));
+      chart.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: pieData, label: { fontSize: 12 } }]
+      });
+      window.addEventListener('resize', function() { chart.resize(); });
+    }
+
+    function renderPageRank(data) {
+      var body = document.getElementById('pageRankBody');
+      if (!data.length) { body.innerHTML = '<tr><td colspan="4" class="empty">暂无数据</td></tr>'; return; }
+      body.innerHTML = data.map(function(p) {
+        var bots = (p.bot_names || '').split(',').filter(Boolean).map(function(n) { return '<span class="badge badge-bot">' + esc(n.trim()) + '</span> '; }).join('');
+        return '<tr><td><code>' + esc(p.page_url) + '</code></td><td>' + p.bot_count + '</td><td>' + p.human_count + '</td><td>' + bots + '</td></tr>';
+      }).join('');
+    }
+
+    function renderRealtime(data) {
+      var el = document.getElementById('realtimeList');
+      if (!data.length) { el.innerHTML = '<div class="empty">最近 5 分钟没有爬虫活动</div>'; return; }
+      el.innerHTML = data.map(function(r) {
+        var t = r.created_at ? r.created_at.split(' ')[1] || '' : '';
+        return '<div class="rt-item"><div><span class="rt-bot">' + esc(r.bot_name) + '</span> <span class="rt-url">' + esc(r.page_url) + '</span></div><span class="rt-time">' + esc(t) + '</span></div>';
+      }).join('');
+    }
+
+    // --- 访客分析 ---
+    function loadVisitor() {
+      if (!currentSiteId) return;
+      var days = document.getElementById('visitorDays').value;
+      var hours = days * 24;
+
+      // 访客统计
+      fetch(API + '/dashboard/visitors?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          var d = json.data || {};
+          var ov = d.overview || {};
+          var stay = ov.avg_stay ? Math.round(ov.avg_stay / 1000) + 's' : '-';
+          var scroll = ov.avg_scroll ? Math.round(ov.avg_scroll) + '%' : '-';
+          document.getElementById('visitorMetrics').innerHTML =
+            metricCard('PV', ov.pv || 0, '页面浏览') +
+            metricCard('UV', ov.uv || 0, '独立访客') +
+            metricCard('平均停留', stay, '停留时间') +
+            metricCard('平均滚动', scroll, '滚动深度');
+        });
+
+      // PV/UV 趋势
+      fetch(API + '/dashboard/visitor-trend?site_id=' + currentSiteId + '&days=' + days)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderVisitorTrend(json.data || []); });
+
+      // 设备分布
+      fetch(API + '/dashboard/devices?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderDevices(json.data || {}); });
+
+      // 来源
+      fetch(API + '/dashboard/referrers?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderReferrers(json.data || []); });
+
+      // 热门页面
+      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) { renderHotPages(json.data || []); });
+    }
+
+    function renderVisitorTrend(data) {
+      var chart = echarts.init(document.getElementById('chartVisitorTrend'));
+      chart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['PV', 'UV'], bottom: 0 },
+        grid: { top: 20, bottom: 40, left: 50, right: 20 },
+        xAxis: { type: 'category', data: data.map(function(d) { return d.day; }), boundaryGap: false },
+        yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+        series: [
+          { name: 'PV', type: 'line', data: data.map(function(d) { return d.pv; }), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#2e86de' } },
+          { name: 'UV', type: 'line', data: data.map(function(d) { return d.uv; }), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#2ea043' } }
+        ]
+      });
+      window.addEventListener('resize', function() { chart.resize(); });
+    }
+
+    function renderDevices(data) {
+      var devices = (data.devices || []).map(function(d) { return { name: d.device, value: d.count }; });
+      var chart = echarts.init(document.getElementById('chartDevices'));
+      chart.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: devices.length ? devices : [{ name: '暂无数据', value: 0 }], label: { fontSize: 12 } }]
+      });
+      window.addEventListener('resize', function() { chart.resize(); });
+    }
+
+    function renderReferrers(data) {
+      var body = document.getElementById('referrerBody');
+      if (!data.length) { body.innerHTML = '<tr><td colspan="2" class="empty">暂无数据</td></tr>'; return; }
+      body.innerHTML = data.slice(0, 10).map(function(r) {
+        return '<tr><td><code>' + esc(r.ref) + '</code></td><td>' + r.count + '</td></tr>';
+      }).join('');
+    }
+
+    function renderHotPages(data) {
+      var body = document.getElementById('hotPageBody');
+      if (!data.length) { body.innerHTML = '<tr><td colspan="2" class="empty">暂无数据</td></tr>'; return; }
+      body.innerHTML = data.slice(0, 10).map(function(p) {
+        return '<tr><td><code>' + esc(p.page_url) + '</code></td><td>' + (p.human_count || p.total) + '</td></tr>';
+      }).join('');
+    }
+
+    // --- 工具 ---
+    function metricCard(label, value, sub) {
+      return '<div class="metric-card"><div class="metric-label">' + esc(label) + '</div><div class="metric-value">' + esc(String(value)) + '</div>' + (sub ? '<div class="metric-sub">' + esc(sub) + '</div>' : '') + '</div>';
+    }
+
+    function esc(s) {
+      var d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    // 定时刷新实时数据
+    setInterval(function() {
+      if (currentSiteId && document.getElementById('panel-crawler').classList.contains('active')) {
+        fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=5')
+          .then(function(r) { return r.json(); })
+          .then(function(json) { renderRealtime(json.data || []); });
+      }
+    }, 30000);
+
+    // --- 添加网站 ---
+    function showAddSite() {
+      document.getElementById('addSiteModal').style.display = 'block';
+      document.getElementById('newSiteName').value = '';
+      document.getElementById('newSiteDomain').value = '';
+      document.getElementById('addSiteResult').innerHTML = '';
+      document.getElementById('newSiteName').focus();
+    }
+    function closeAddSite() {
+      document.getElementById('addSiteModal').style.display = 'none';
+    }
+    function createSite() {
+      var name = document.getElementById('newSiteName').value.trim();
+      var domain = document.getElementById('newSiteDomain').value.trim();
+      if (!name) {
+        document.getElementById('addSiteResult').innerHTML = '<span style="color:var(--red);">请输入网站名称</span>';
+        return;
+      }
+      fetch(API + '/sites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, domain: domain })
+      }).then(function(r) { return r.json(); }).then(function(json) {
+        if (json.success) {
+          document.getElementById('addSiteResult').innerHTML = '<span style="color:var(--green);">创建成功！SDK: &lt;script src="' + esc(window.location.origin) + '/sdk/tracker.js" data-site-id="' + esc(json.site_id) + '" async&gt;&lt;/script&gt;</span>';
+          var sel = document.getElementById('siteSelect');
+          var opt = document.createElement('option');
+          opt.value = json.site_id;
+          opt.textContent = name + (domain ? ' (' + domain + ')' : '');
+          sel.appendChild(opt);
+          sel.value = json.site_id;
+          currentSiteId = json.site_id;
+          setTimeout(function() {
+            closeAddSite();
+            loadCrawler();
+            loadVisitor();
+          }, 2000);
+        } else {
+          document.getElementById('addSiteResult').innerHTML = '<span style="color:var(--red);">创建失败</span>';
+        }
+      }).catch(function() {
+        document.getElementById('addSiteResult').innerHTML = '<span style="color:var(--red);">网络错误</span>';
+      });
+    }
+
+    // 启动
+    loadSites();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "crawler-monitor-server",
+  "version": "1.0.0",
+  "description": "爬虫监测 + 人类访问监控 后端 API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node index.js & sleep 2 && node tests/test-api.js; kill %1 2>/dev/null"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "uuid": "^10.0.0"
+  }
+}
