@@ -73,7 +73,7 @@
     .date-custom-apply:hover { background: #1557B0; }
 
     /* Language toggle */
-    .lang-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .lang-toggle, .pv-uv-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
     .lang-btn { padding: 5px 10px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg); color: var(--text-sec); border: none; transition: all 0.15s; }
     .lang-btn:not(:last-child) { border-right: 1px solid var(--border); }
     .lang-btn.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
@@ -127,8 +127,11 @@
     td { padding: 10px 20px; font-size: 13px; border-bottom: 1px solid var(--border-light); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #F8F9FA; }
-    .page-url { font-family: "Google Sans Mono", "SF Mono", monospace; font-size: 12px; color: var(--primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 4px; margin-bottom: 2px; }
+    .page-url { font-family: "Google Sans Mono", "SF Mono", monospace; font-size: 12px; color: var(--primary); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; text-decoration: none; }
+    a.page-url:hover { text-decoration: underline; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 4px; margin-bottom: 2px; position: relative; }
+    .badge-ai[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #202124; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 400; white-space: nowrap; z-index: 500; pointer-events: none; max-width: 280px; white-space: normal; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .badge-ai[data-tip]:hover::before { content: ""; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: #202124; z-index: 500; pointer-events: none; }
     .badge-ai { background: var(--amber-bg); color: var(--amber-dark); }
     .bar-cell { display: flex; align-items: center; gap: 8px; }
     .bar-track { flex: 1; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; max-width: 80px; }
@@ -142,7 +145,9 @@
     .rt-item:hover { background: var(--bg-page); }
     .rt-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
     .rt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
-    .rt-bot { font-weight: 600; color: var(--amber-dark); font-size: 13px; }
+    .rt-bot { font-weight: 600; color: var(--amber-dark); font-size: 13px; position: relative; }
+    .rt-bot[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 0; background: #202124; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 400; z-index: 500; pointer-events: none; max-width: 280px; white-space: normal; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .rt-bot[data-tip]:hover::before { content: ""; position: absolute; bottom: calc(100% + 2px); left: 10px; border: 4px solid transparent; border-top-color: #202124; z-index: 500; pointer-events: none; }
     .rt-url { color: var(--text-sec); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rt-time { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
     .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
@@ -158,6 +163,9 @@
     .fg input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; transition: all 0.15s; }
     .fg input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-bg); }
     .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .sdk-code-wrap { position: relative; margin-top: 8px; }
+    .sdk-code-wrap .copy-btn { position: absolute; top: 6px; right: 6px; padding: 3px 8px; font-size: 11px; background: var(--primary); color: #fff; border: none; border-radius: 4px; cursor: pointer; opacity: 0.8; }
+    .sdk-code-wrap .copy-btn:hover { opacity: 1; }
     .btn { padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; }
     .btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
     .btn-ghost:hover { background: var(--bg-page); }
@@ -256,6 +264,13 @@
     <div class="main">
       <!-- Overview -->
       <div class="panel active" id="panel-overview">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div></div>
+          <div class="pv-uv-toggle" id="pvUvToggle">
+            <button class="lang-btn active" onclick="setMetric('pv')">PV</button>
+            <button class="lang-btn" onclick="setMetric('uv')">UV</button>
+          </div>
+        </div>
         <div class="scorecards" id="overviewCards"></div>
         <div class="chart-card">
           <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span data-i18n="chartAiTrend">AI Source Traffic</span></h3>
@@ -363,12 +378,40 @@
     var API = window.location.origin + '/api';
     var currentSiteId = '';
     var currentDays = 7;
+    var currentMetric = 'pv'; // 'pv' or 'uv'
+    var overviewData = {}; // store raw overview data for toggle
     var allPageData = [];
     var allOverviewPageData = [];
     var overviewSort = { key: 'bot', dir: 'desc' };
     var pageSort = { key: 'bot', dir: 'desc' };
     var realtimeItems = [];
     var charts = {};
+
+    // Bot descriptions for tooltips
+    var BOT_INFO = {
+      'GPTBot': 'OpenAI 网页爬虫，用于训练和改进 GPT 模型',
+      'ChatGPT-User': 'ChatGPT 用户触发的实时网页访问（非爬虫）',
+      'OAI-SearchBot': 'OpenAI 搜索引擎爬虫',
+      'ClaudeBot': 'Anthropic Claude AI 网页爬虫',
+      'anthropic-ai': 'Anthropic AI 数据采集',
+      'PerplexityBot': 'Perplexity AI 搜索引擎爬虫',
+      'Googlebot': 'Google 搜索引擎爬虫（主爬虫）',
+      'Google-Extended': 'Google AI 训练数据采集（Gemini）',
+      'GoogleOther': 'Google 其他用途爬虫',
+      'Applebot': 'Apple Siri/Spotlight 搜索爬虫',
+      'Amazonbot': 'Amazon Alexa 搜索爬虫',
+      'FacebookBot': 'Facebook 链接预览爬虫',
+      'CCBot': 'Common Crawl 非营利数据采集',
+      'Bytespider': '字节跳动/抖音 AI 爬虫',
+      'Baiduspider': '百度搜索引擎爬虫',
+      'YisouSpider': '神马搜索引擎爬虫（阿里）',
+      'SogouSpider': '搜狗搜索引擎爬虫（腾讯）',
+      '360Spider': '360 搜索引擎爬虫',
+      'PetalBot': '华为花瓣搜索引擎爬虫',
+      'ChatGLM-Spider': '智谱 ChatGLM AI 爬虫',
+      'cohere-ai': 'Cohere AI 数据采集',
+      'Bingbot': 'Bing 搜索引擎爬虫'
+    };
 
     // --- i18n ---
     var LANGS = {
@@ -543,18 +586,27 @@
           if (json.success) {
             var sdk = '<script src="' + window.location.origin + '/sdk/tracker.js" data-site-id="' + json.site_id + '" async><\/script>';
             var resultHtml = '<span class="verify-ok">' + t('created') + '</span>';
-            // Verify: check site exists in list
             fetch(API + '/sites/' + json.site_id).then(function(r) { return r.json(); }).then(function(v) {
               if (v.success) resultHtml += ' <span class="verify-ok">| ' + t('verifyOk') + '</span>';
               else resultHtml += ' <span class="verify-fail">| ' + t('verifyFail') + '</span>';
-              document.getElementById('addSiteResult').innerHTML = resultHtml + '<div class="sdk-code">' + esc(sdk) + '</div>';
+              document.getElementById('addSiteResult').innerHTML = resultHtml +
+                '<div class="sdk-code-wrap"><div class="sdk-code">' + esc(sdk) + '</div><button class="copy-btn" onclick="copySdk(this)">Copy</button></div>';
             });
-            setTimeout(function() { closeAddSite(); loadSites(); }, 3000);
+            // Auto-select the new site after closing
+            setTimeout(function() { closeAddSite(); loadSites(); selectSite(json.site_id, name + (domain ? ' (' + domain + ')' : '')); }, 4000);
           } else {
             document.getElementById('addSiteResult').innerHTML = '<span class="verify-fail">' + t('failed') + '</span>';
           }
         })
         .catch(function() { document.getElementById('addSiteResult').innerHTML = '<span class="verify-fail">' + t('netErr') + '</span>'; });
+    }
+
+    function copySdk(btn) {
+      var code = btn.previousElementSibling.textContent;
+      navigator.clipboard.writeText(code).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
     }
     document.getElementById('addSiteModal').addEventListener('click', function(e) { if (e.target === this) closeAddSite(); });
 
@@ -566,16 +618,36 @@
     }
 
     // --- Overview ---
+    function setMetric(m) {
+      currentMetric = m;
+      document.querySelectorAll('#pvUvToggle .lang-btn').forEach(function(b) { b.classList.toggle('active', b.textContent === m.toUpperCase()); });
+      renderOverviewCards();
+    }
+
+    function renderOverviewCards() {
+      var d = overviewData;
+      if (!d || !d.total_pv) return;
+      if (currentMetric === 'uv') {
+        document.getElementById('overviewCards').innerHTML =
+          sc(t('scUv'), d.uv || 0, 'var(--primary)') +
+          sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)') +
+          sc(t('scBot') + ' PV', d.bot_pv || 0, 'var(--amber)') +
+          sc(t('scTotal') + ' PV', d.total_pv || 0);
+      } else {
+        document.getElementById('overviewCards').innerHTML =
+          sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
+          sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') + sc(t('scUv'), d.uv || 0);
+      }
+    }
+
     function loadOverview() {
       if (!currentSiteId) return;
       var hours = currentDays * 24;
       fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
         .then(function(r) { return r.json(); })
         .then(function(json) {
-          var d = json.data || {};
-          document.getElementById('overviewCards').innerHTML =
-            sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
-            sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') + sc(t('scUv'), d.uv || 0);
+          overviewData = json.data || {};
+          renderOverviewCards();
         });
       fetch(API + '/dashboard/trend?site_id=' + currentSiteId + '&days=' + currentDays)
         .then(function(r) { return r.json(); })
@@ -620,8 +692,8 @@
       updateSortHeaders('#panel-overview', overviewSort);
     }
     function filterOverviewPages() {
-      var q = document.getElementById('overviewSearch').value.toLowerCase();
-      var data = q ? allOverviewPageData.filter(function(p) { return (p.page_url||'').toLowerCase().indexOf(q)!==-1; }) : allOverviewPageData;
+      var q = document.getElementById('overviewSearch').value.toLowerCase().trim();
+      var data = q ? allOverviewPageData.filter(function(p) { return matchSearch(p.page_url, q); }) : allOverviewPageData;
       renderPageTable(sortData(data, overviewSort), 'overviewPageBody');
     }
     function sortOverviewTable(key) {
@@ -649,7 +721,8 @@
           var body = document.getElementById('botRankBody');
           if (!data.length) { body.innerHTML = '<tr><td colspan="5" class="empty">' + t('noData') + '</td></tr>'; return; }
           body.innerHTML = data.map(function(b) {
-            return '<tr><td><span class="badge badge-ai">' + esc(b.bot_name) + '</span></td><td style="color:var(--text-sec);">' + esc(b.bot_family) + '</td><td style="font-weight:600;font-family:monospace;">' + b.count + '</td><td>' + b.unique_pages + '</td><td style="color:var(--text-muted);font-size:12px;">' + (b.last_seen||'-') + '</td></tr>';
+            var tip = BOT_INFO[b.bot_name] || '';
+            return '<tr><td><span class="badge badge-ai"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '>' + esc(b.bot_name) + '</span></td><td style="color:var(--text-sec);">' + esc(b.bot_family) + '</td><td style="font-weight:600;font-family:monospace;">' + b.count + '</td><td>' + b.unique_pages + '</td><td style="color:var(--text-muted);font-size:12px;">' + (b.last_seen||'-') + '</td></tr>';
           }).join('');
         });
     }
@@ -663,8 +736,8 @@
     }
     function renderPagesSorted() { renderPageTable(sortData(allPageData, pageSort), 'pageRankBody'); updateSortHeaders('#panel-pages', pageSort); }
     function filterPages() {
-      var q = document.getElementById('pageSearch').value.toLowerCase();
-      var data = q ? allPageData.filter(function(p) { return (p.page_url||'').toLowerCase().indexOf(q)!==-1; }) : allPageData;
+      var q = document.getElementById('pageSearch').value.toLowerCase().trim();
+      var data = q ? allPageData.filter(function(p) { return matchSearch(p.page_url, q); }) : allPageData;
       renderPageTable(sortData(data, pageSort), 'pageRankBody');
     }
     function sortPageTable(key) {
@@ -712,7 +785,8 @@
       if (!realtimeItems.length) { el.innerHTML = '<div class="empty"><p>' + t('waitingBots') + '</p></div>'; return; }
       el.innerHTML = realtimeItems.map(function(r) {
         var tm = r.created_at ? r.created_at.split(' ')[1] || '' : '';
-        return '<div class="rt-item"><div class="rt-left"><div class="rt-dot"></div><span class="rt-bot">' + esc(r.bot_name) + '</span><span class="rt-url">' + esc(r.page_url) + '</span></div><span class="rt-time">' + esc(tm) + '</span></div>';
+        var tip = BOT_INFO[r.bot_name] || '';
+        return '<div class="rt-item"><div class="rt-left"><div class="rt-dot"></div><span class="rt-bot"' + (tip ? ' data-tip="' + esc(tip) + '" style="cursor:help;border-bottom:1px dotted var(--amber-dark);"' : '') + '>' + esc(r.bot_name) + '</span><span class="rt-url">' + esc(r.page_url) + '</span></div><span class="rt-time">' + esc(tm) + '</span></div>';
       }).join('');
     }
 
@@ -790,12 +864,15 @@
       var body = document.getElementById(bodyId);
       if (!data.length) { body.innerHTML = '<tr><td colspan="5" class="empty">' + t('noData') + '</td></tr>'; return; }
       var maxBot = Math.max.apply(null, data.map(function(p) { return p.bot_count||0; })) || 1;
+      var domain = getSelectedDomain();
+      var base = domain ? 'https://' + domain : '';
       body.innerHTML = data.map(function(p) {
         var total = (p.bot_count||0) + (p.human_count||0);
         var ratio = total > 0 ? Math.round((p.bot_count||0)/total*100) : 0;
         var barW = Math.round((p.bot_count||0)/maxBot*100);
-        var bots = (p.bot_names||'').split(',').filter(Boolean).map(function(n) { return '<span class="badge badge-ai">' + esc(n.trim()) + '</span>'; }).join('');
-        return '<tr><td><span class="page-url" title="' + esc(p.page_url) + '">' + esc(p.page_url) + '</span></td>' +
+        var bots = (p.bot_names||'').split(',').filter(Boolean).map(function(n) { var nm = n.trim(); var tip = BOT_INFO[nm] || ''; return '<span class="badge badge-ai"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '>' + esc(nm) + '</span>'; }).join('');
+        var urlHtml = base ? '<a class="page-url" href="' + esc(base + p.page_url) + '" target="_blank" title="' + esc(p.page_url) + '">' + esc(p.page_url) + '</a>' : '<span class="page-url" title="' + esc(p.page_url) + '">' + esc(p.page_url) + '</span>';
+        return '<tr><td>' + urlHtml + '</td>' +
           '<td><div class="bar-cell"><div class="bar-track"><div class="bar-fill amber" style="width:' + barW + '%"></div></div><span class="bar-val">' + (p.bot_count||0) + '</span></div></td>' +
           '<td><span class="bar-val">' + (p.human_count||0) + '</span></td>' +
           '<td>' + (bots||'-') + '</td>' +
@@ -833,6 +910,16 @@
     }
 
     // --- Helpers ---
+    function matchSearch(url, q) {
+      if (!url) return false;
+      var lower = url.toLowerCase();
+      var terms = q.split(/\s+/).filter(Boolean);
+      for (var i = 0; i < terms.length; i++) {
+        if (lower.indexOf(terms[i]) === -1) return false;
+      }
+      return true;
+    }
+
     function sc(label, value, color) {
       var s = color ? ' style="color:' + color + '"' : '';
       return '<div class="scorecard"><div class="sc-label">' + esc(label) + '</div><div class="sc-value"' + s + '>' + Number(value).toLocaleString() + '</div></div>';

@@ -84,10 +84,10 @@ router.get('/analyze', async function(req, res) {
     var xml = await fetchUrl(sitemapUrl);
     var allUrls = parseSitemapUrls(xml);
 
-    // If it's a sitemap index, fetch sub-sitemaps (max 5)
+    // If it's a sitemap index, fetch sub-sitemaps (max 20)
     if (allUrls.length === 0 || xml.indexOf('<sitemapindex') !== -1) {
       var subUrls = [];
-      for (var i = 0; i < Math.min(allUrls.length, 5); i++) {
+      for (var i = 0; i < Math.min(allUrls.length, 20); i++) {
         try {
           var subXml = await fetchUrl(allUrls[i]);
           subUrls = subUrls.concat(parseSitemapUrls(subXml));
