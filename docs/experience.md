@@ -69,19 +69,26 @@ insertMany(events);
 
 ### 4. 看板设计思路
 
-**两个 Tab 而不是一个页面**：
-- 爬虫监控和访客分析是两类不同的关注点
-- 分开后每个 Tab 更聚焦，不会信息过载
+**GA4 风格侧边栏导航**：
+- 从 Tab 切换改为左侧导航栏（参考 GA4）
+- Overview / AI Traffic / Pages / Realtime 四个面板
+- 首页 Overview 底部放完整页面列表，一站式查看
 
 **ECharts 选型**：
 - 比 Chart.js 功能更全（支持饼图、折线图、混合图）
 - CDN 引入，不需要打包
 - 按需使用，不影响 SDK 体积
 
-**Notion-like 风格**：
+**GA4 风格**：
 - 白色背景、细边框、圆角卡片
-- JetBrains Mono 用于数字显示
-- 橙色作为强调色（参考 radarai.top）
+- 左侧导航栏 + 顶部日期选择器（参考 Google Analytics 4）
+- Amber 作为主色（AI/爬虫）、Blue 作为辅色（人类数据）
+- 配色精简：只用 amber 渐变 + blue 双色系，避免杂乱
+
+**多语言（i18n）**：
+- 用 `data-i18n` 属性标记需要翻译的元素
+- JS 端维护 `i18n` 对象，`applyI18n()` 函数统一更新
+- 语言偏好存储在 `localStorage`
 
 ### 5. 部署经验
 

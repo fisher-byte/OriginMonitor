@@ -7,12 +7,16 @@ const router = express.Router();
 // 创建网站
 router.post('/', (req, res) => {
   const { name, domain } = req.body;
-  if (!name) return res.status(400).json({ error: 'name is required' });
+  if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name is required' });
+
+  const cleanName = name.trim().slice(0, 100);
+  const cleanDomain = (domain || '').trim().slice(0, 255);
+  if (!cleanName) return res.status(400).json({ error: 'name is required' });
 
   const id = uuidv4();
   const db = getDb();
-  db.prepare('INSERT INTO sites (id, name, domain) VALUES (?, ?, ?)').run(id, name, domain || '');
-  res.json({ success: true, site_id: id, name, domain: domain || '' });
+  db.prepare('INSERT INTO sites (id, name, domain) VALUES (?, ?, ?)').run(id, cleanName, cleanDomain);
+  res.json({ success: true, site_id: id, name: cleanName, domain: cleanDomain });
 });
 
 // 网站列表

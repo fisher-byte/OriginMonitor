@@ -123,6 +123,46 @@ PV/UV 趋势。
 
 ---
 
+## Sitemap 分析
+
+### GET /api/sitemap/analyze
+
+抓取目标网站的 sitemap.xml，与爬取数据交叉分析。
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| site_id | 必填 | 网站 ID |
+| domain | 必填 | 目标域名（不含协议） |
+| hours | 720 | 统计时间窗口（小时） |
+
+**响应：**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "page_url": "/blog/ai-tools",
+      "full_url": "https://example.com/blog/ai-tools",
+      "bot_count": 12,
+      "human_count": 5,
+      "bot_names": "GPTBot,ClaudeBot",
+      "total": 17,
+      "crawled": true
+    }
+  ],
+  "total_pages": 45,
+  "crawled_pages": 12,
+  "source": "https://example.com/sitemap.xml"
+}
+```
+
+**安全限制：**
+- 仅支持域名，禁止 IP 地址、localhost、内网地址
+- 响应体限制 1MB
+- 子 sitemap 最多抓取 5 个
+
+---
+
 ## 网站管理
 
 ### POST /api/sites

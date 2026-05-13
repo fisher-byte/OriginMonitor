@@ -43,7 +43,8 @@ Express 服务（:3000）
   │
   ├─ /api/collect → 写入 SQLite（page_events + request_events）
   ├─ /api/dashboard/* → 读取 SQLite，聚合计算
-  └─ /api/sites → CRUD
+  ├─ /api/sites → CRUD
+  └─ /api/sitemap/analyze → 抓取 sitemap.xml + 交叉分析
   
 SQLite（/opt/monitor/server/data/monitor.db）
   │

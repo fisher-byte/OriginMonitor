@@ -63,6 +63,13 @@ scp frontend/index.html root@139.199.73.159:/opt/monitor/frontend/
 ssh root@139.199.73.159 "cd /opt/monitor/server && pm2 restart monitor"
 ```
 
+### 安全注意事项
+
+- Sitemap API 已添加 SSRF 防护（禁止 IP、内网地址、响应体限制）
+- 网站创建接口已添加输入长度验证
+- SDK 数据上报 CORS 开放，看板 API 限制来源
+- 后续建议：添加 API Key 认证、域名白名单
+
 ### Nginx 配置
 
 配置文件：`/etc/nginx/conf.d/monitor.conf`

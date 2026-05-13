@@ -29,6 +29,7 @@ app.get('/sdk/tracker.js', (req, res) => {
 app.use('/api/collect', require('./routes/collect'));
 app.use('/api/sites', require('./routes/sites'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/sitemap', require('./routes/sitemap'));
 
 // 健康检查
 app.get('/healthz', (req, res) => {

@@ -1,87 +1,162 @@
-# OriginMonitor
+<p align="center">
+  <img src="https://img.shields.io/badge/OriginMonitor-v1.1-D97706?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI4IiBmaWxsPSIjRDk3NzA2Ii8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iOCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyLjUiIGZpbGw9Im5vbmUiLz48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIzIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==" />
+  <img src="https://img.shields.io/badge/Node.js-18+-339933?style=flat-square&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" />
+</p>
 
-一行代码接入的网站监控系统，同时覆盖 **AI 爬虫监控** 和 **人类访客分析**。
+<h1 align="center">OriginMonitor</h1>
+<p align="center" style="color:#6B7280;font-size:1.1rem;">One-line SDK for AI crawler monitoring & visitor analytics</p>
 
-## 功能
+<p align="center">
+  <strong>Track which AI bots are crawling your site, what pages they index, and how your human traffic compares.</strong>
+</p>
 
-### 爬虫监控
-- 识别 20+ 已知 AI/搜索引擎爬虫（GPTBot, ClaudeBot, Googlebot, Bingbot, Bytespider...）
-- 实时追踪爬虫活动
-- 爬虫访问趋势、页面排名、家族分布
+---
 
-### 访客分析
-- PV/UV 统计、独立访客追踪
-- 设备分布（Desktop/Mobile/Tablet）
-- 流量来源分析
-- 页面停留时间、滚动深度
-- 热门页面排名
+## What it does
 
-## 快速开始
+OriginMonitor is a lightweight analytics platform that helps you understand how AI systems interact with your website:
 
-### 1. 启动后端
+- **AI Crawler Detection** — Identifies 22+ known AI/search bots (GPTBot, ClaudeBot, Googlebot, PerplexityBot, Bytespider...)
+- **Daily Trend Analysis** — See how AI crawl traffic changes day by day, broken down by bot family
+- **Page-level Insights** — Know exactly which pages AI bots are indexing most
+- **Sitemap Cross-reference** — Fetch your sitemap.xml and see which pages have been crawled by AI
+- **Real-time Feed** — Watch bot activity happen live on your site
+- **Visitor Analytics** — Standard PV/UV, device, referrer, and engagement metrics
+
+## Quick Start
+
+### 1. Start the server
 
 ```bash
 cd server
 npm install
 npm start
+# Server runs at http://localhost:3000
 ```
 
-### 2. 嵌入 SDK
+### 2. Add a site
+
+Open `http://localhost:3000` and click **+ Add Site**, or use the API:
+
+```bash
+curl -X POST http://localhost:3000/api/sites \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Blog", "domain": "myblog.com"}'
+```
+
+### 3. Embed the SDK
+
+Add one line to your website's `<head>`:
 
 ```html
 <script src="http://your-server:3000/sdk/tracker.js" data-site-id="YOUR_SITE_ID" async></script>
 ```
 
-### 3. 查看看板
+That's it. The SDK automatically:
+- Tracks page views with visitor fingerprinting
+- Captures scroll depth and stay time
+- Intercepts fetch/XHR requests for performance data
+- Reports data via `sendBeacon` (zero impact on page load)
 
-打开 `http://localhost:3000/index.html`
+### 4. View the dashboard
 
-## 项目结构
+Open `http://localhost:3000` to see your analytics.
+
+## Architecture
 
 ```
 OriginMonitor/
-├── sdk/tracker.js          # 前端采集 SDK（< 5KB）
+├── sdk/tracker.js            # Client SDK (< 5KB, zero dependencies)
 ├── server/
-│   ├── index.js            # Express 服务入口
-│   ├── routes/             # API 路由
-│   ├── db/                 # SQLite 数据库
-│   ├── utils/              # 爬虫识别
-│   └── tests/              # API 测试（42 个用例）
-├── frontend/index.html     # 看板页面
-└── docs/                   # 文档
+│   ├── index.js              # Express entry point
+│   ├── routes/
+│   │   ├── collect.js        # POST /api/collect — SDK data ingestion
+│   │   ├── dashboard.js      # GET /api/dashboard/* — Analytics queries
+│   │   ├── sites.js          # CRUD /api/sites
+│   │   └── sitemap.js        # GET /api/sitemap/analyze — Sitemap crawler
+│   ├── db/
+│   │   ├── init.js           # SQLite connection manager
+│   │   └── schema.sql        # Database schema
+│   ├── utils/
+│   │   └── bot-classify.js   # User-Agent bot detection (22+ patterns)
+│   └── middleware/
+│       └── cors.js           # CORS configuration
+├── frontend/index.html       # Single-page dashboard (ECharts)
+└── docs/                     # Documentation
 ```
 
-## 技术栈
+## Tech Stack
 
-- **SDK**: 原生 JavaScript，< 5KB，无依赖
-- **后端**: Node.js + Express + SQLite
-- **前端**: HTML + ECharts（CDN）
-- **部署**: PM2 + Nginx
+| Layer | Technology |
+|-------|-----------|
+| SDK | Vanilla JS, `< 5KB`, no dependencies |
+| Backend | Node.js + Express + better-sqlite3 |
+| Database | SQLite (WAL mode, zero config) |
+| Frontend | HTML + ECharts (CDN) |
+| Deploy | PM2 + Nginx (or any Node hosting) |
 
-## 文档
+## Bot Detection
 
-- [SDK 接入指南](docs/sdk-integration.md)
-- [API 接口文档](docs/api-reference.md)
-- [部署指南](docs/deployment.md)
-- [架构设计](docs/architecture.md)
-- [爬虫识别库](docs/bot-database.md)
-- [经验与思路](docs/experience.md)
-- [更新日志](docs/changelog.md)
+Recognized AI/search crawlers:
 
-## 测试
+| Family | Bots |
+|--------|------|
+| OpenAI | GPTBot, OAI-SearchBot, ChatGPT-User |
+| Anthropic | ClaudeBot, anthropic-ai |
+| Google | Googlebot, Google-Extended, GoogleOther |
+| Perplexity | PerplexityBot |
+| Microsoft | Bingbot |
+| ByteDance | Bytespider |
+| Apple | Applebot |
+| Amazon | Amazonbot |
+| Meta | FacebookBot |
+| Baidu | Baiduspider |
+| Huawei | PetalBot |
+| Zhipu | ChatGLM-Spider |
+| Cohere | cohere-ai |
+| + Generic | Any UA matching bot/crawler/spider pattern |
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/collect` | POST | SDK data ingestion |
+| `/api/sites` | GET/POST | List or create sites |
+| `/api/dashboard/overview` | GET | PV/UV summary |
+| `/api/dashboard/trend` | GET | Daily bot/human traffic trend |
+| `/api/dashboard/bots` | GET | Bot ranking by visits |
+| `/api/dashboard/pages` | GET | Page ranking (bot + human) |
+| `/api/dashboard/realtime` | GET | Live bot activity (last N minutes) |
+| `/api/dashboard/visitors` | GET | Human visitor stats |
+| `/api/dashboard/visitor-trend` | GET | Daily PV/UV trend |
+| `/api/dashboard/devices` | GET | Device/OS/browser distribution |
+| `/api/dashboard/referrers` | GET | Traffic source ranking |
+| `/api/sitemap/analyze` | GET | Sitemap crawl analysis |
+
+## Deployment
 
 ```bash
-cd server
-npm test
+# On your server
+git clone <repo> && cd OriginMonitor/server
+npm install --production
+
+# PM2
+pm2 start index.js --name origin-monitor
+pm2 save
+
+# Nginx reverse proxy
+# proxy_pass http://127.0.0.1:3000;
 ```
 
-42 个 API 测试用例，覆盖所有端点。
+## Documentation
 
-## 线上演示
-
-- 看板：http://139.199.73.159/index.html
-- SDK：http://139.199.73.159/sdk/tracker.js
-- API：http://139.199.73.159/api/
+- [SDK Integration Guide](docs/sdk-integration.md)
+- [API Reference](docs/api-reference.md)
+- [Deployment Guide](docs/deployment.md)
+- [Architecture](docs/architecture.md)
+- [Bot Database](docs/bot-database.md)
+- [Changelog](docs/changelog.md)
 
 ## License
 

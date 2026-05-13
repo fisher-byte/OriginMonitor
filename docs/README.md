@@ -5,9 +5,10 @@
 ## 核心功能
 
 ### 爬虫监控
-- 识别 20+ 已知 AI/搜索引擎爬虫（GPTBot, ClaudeBot, Googlebot, Bingbot, Bytespider...）
+- 识别 22+ 已知 AI/搜索引擎爬虫（GPTBot, ClaudeBot, Googlebot, Bingbot, Bytespider...）
 - 实时追踪爬虫活动
 - 爬虫访问趋势、页面排名、家族分布
+- Sitemap 交叉分析：哪些页面被 AI 爬取
 
 ### 访客分析
 - PV/UV 统计、独立访客追踪
@@ -15,6 +16,10 @@
 - 流量来源分析
 - 页面停留时间、滚动深度
 - 热门页面排名
+
+### 多语言
+- 支持中文 / 英文切换
+- 所有 UI 文本均支持双语
 
 ## 快速开始
 
@@ -43,28 +48,34 @@ npm start
 ## 项目结构
 
 ```
-起源增长-监控/
+OriginMonitor/
 ├── sdk/
-│   └── tracker.js          # 前端采集 SDK
+│   └── tracker.js          # 前端采集 SDK（< 5KB）
 ├── server/
 │   ├── index.js            # Express 服务入口
 │   ├── routes/
 │   │   ├── collect.js      # 数据接收 API
 │   │   ├── dashboard.js    # 看板数据 API
-│   │   └── sites.js        # 网站管理 API
+│   │   ├── sites.js        # 网站管理 API
+│   │   └── sitemap.js      # Sitemap 分析 API
 │   ├── db/
 │   │   ├── init.js         # 数据库初始化
 │   │   └── schema.sql      # 表结构
-│   └── utils/
-│       └── bot-classify.js # 爬虫识别
+│   ├── utils/
+│   │   └── bot-classify.js # 爬虫识别
+│   └── middleware/
+│       └── cors.js         # CORS 配置
 ├── frontend/
-│   └── index.html          # 看板页面
+│   └── index.html          # GA4 风格看板（含 i18n）
 └── docs/
     ├── README.md           # 本文件
     ├── sdk-integration.md  # SDK 接入指南
     ├── api-reference.md    # API 文档
     ├── deployment.md       # 部署指南
-    └── bot-database.md     # 爬虫识别库
+    ├── architecture.md     # 架构设计
+    ├── bot-database.md     # 爬虫识别库
+    ├── experience.md       # 经验总结
+    └── changelog.md        # 更新日志
 ```
 
 ## 测试
