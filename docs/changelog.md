@@ -1,5 +1,50 @@
 # 更新日志
 
+## v2.0.0 (2026-05-14)
+
+### 新增
+
+**AI 原生架构**
+- MCP Server (`mcp/`): 14 个工具，AI 助手可直接查询所有监控数据
+- CLI 工具 (`cli/`): 终端命令行访问，支持表格和 JSON 输出
+- 共享模块 (`shared/`): 数据库连接和查询函数，server/MCP/CLI 三方复用
+- Sitemap 服务模块 (`server/lib/`): 核心分析逻辑从路由中提取，可独立调用
+
+**API Key 认证**
+- 可选的 API Key 认证中间件 (`server/middleware/auth.js`)
+- 通过 `API_KEY` 环境变量启用
+- 支持 `Authorization: Bearer <key>` 和 `?api_key=<key>` 两种方式
+- `/api/collect` 和 `/healthz` 不需要认证（向后兼容）
+
+**安全加固**
+- `.gitignore` 添加 `.claude/`、`prompt.md` 等忽略项
+- 文档脱敏：移除硬编码服务器 IP，使用占位符
+- 新增 `.env.example` 配置模板
+
+**文档**
+- 新增 MCP 接入指南 (`docs/mcp-integration.md`)
+- 新增 CLI 命令参考 (`docs/cli-reference.md`)
+- 新增 OpenAPI 规范 (`docs/openapi.yaml`)
+- 更新项目结构和架构说明
+
+### 变更
+
+- `server/db/init.js` 改为使用 `shared/db.js` 共享模块
+- `server/routes/dashboard.js` 改为使用 `shared/queries.js` 共享查询
+- `server/routes/sites.js` 改为使用 `shared/queries.js` 共享查询
+- `server/routes/sitemap.js` 改为使用 `server/lib/sitemap-service.js`
+- 根目录新增 `package.json`，统一管理共享依赖
+
+### 安全修复
+
+- API Key 认证使用 `crypto.timingSafeEqual` 防止时序攻击
+- `deleteSite` 操作使用事务保证数据一致性
+
+### 测试
+
+- 新增 6 个 API Key 认证中间件单元测试
+- 测试总数更新为 63 个
+
 ## v1.2.1 (2026-05-14)
 
 ### 修复

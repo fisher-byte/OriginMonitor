@@ -1,0 +1,9 @@
+{
+  "name": "origin-monitor-cli",
+  "version": "2.0.0",
+  "description": "CLI for OriginMonitor - AI-native website monitoring",
+  "main": "index.js",
+  "bin": {
+    "origin-monitor": "./index.js"
+  }
+}

@@ -51,33 +51,49 @@ npm start
 ```
 OriginMonitor/
 ├── sdk/
-│   └── tracker.js          # 前端采集 SDK（< 5KB）
+│   └── tracker.js              # 前端采集 SDK（< 5KB）
 ├── server/
-│   ├── index.js            # Express 服务入口
+│   ├── index.js                # Express 服务入口
 │   ├── routes/
-│   │   ├── collect.js      # 数据接收 API
-│   │   ├── dashboard.js    # 看板数据 API
-│   │   ├── sites.js        # 网站管理 API
-│   │   └── sitemap.js      # Sitemap 分析 API
+│   │   ├── collect.js          # 数据接收 API
+│   │   ├── dashboard.js        # 看板数据 API
+│   │   ├── sites.js            # 网站管理 API
+│   │   └── sitemap.js          # Sitemap 分析 API
+│   ├── lib/
+│   │   └── sitemap-service.js  # Sitemap 分析服务（可复用）
 │   ├── db/
-│   │   ├── init.js         # 数据库初始化
-│   │   └── schema.sql      # 表结构
+│   │   ├── init.js             # 数据库初始化
+│   │   └── schema.sql          # 表结构
 │   ├── utils/
-│   │   └── bot-classify.js # 爬虫识别
+│   │   └── bot-classify.js     # 爬虫识别
 │   └── middleware/
-│       └── cors.js         # CORS 配置
+│       ├── cors.js             # CORS 配置
+│       └── auth.js             # API Key 认证
+├── shared/
+│   ├── db.js                   # 共享数据库模块
+│   └── queries.js              # 共享查询函数
+├── mcp/
+│   ├── index.js                # MCP Server 入口
+│   └── README.md               # MCP 配置说明
+├── cli/
+│   ├── index.js                # CLI 入口
+│   ├── commands.js             # 命令定义
+│   └── formatters.js           # 输出格式化
 ├── frontend/
-│   └── index.html          # GA4 风格看板（含 i18n）
+│   └── index.html              # GA4 风格看板（含 i18n）
 └── docs/
-    ├── README.md           # 本文件
-    ├── sdk-integration.md  # SDK 接入指南
-    ├── api-reference.md    # API 文档
-    ├── deployment.md       # 部署指南
-    ├── architecture.md     # 架构设计
-    ├── bot-database.md     # 爬虫识别库
-    ├── experience.md       # 经验总结
-    ├── changelog.md        # 更新日志
-    └── sop.md              # 代码更新标准流程
+    ├── README.md               # 本文件
+    ├── sdk-integration.md      # SDK 接入指南
+    ├── api-reference.md        # API 文档
+    ├── mcp-integration.md      # MCP 接入指南
+    ├── cli-reference.md        # CLI 命令参考
+    ├── openapi.yaml            # OpenAPI 规范
+    ├── deployment.md           # 部署指南
+    ├── architecture.md         # 架构设计
+    ├── bot-database.md         # 爬虫识别库
+    ├── experience.md           # 经验总结
+    ├── changelog.md            # 更新日志
+    └── sop.md                  # 代码更新标准流程
 ```
 
 ## 测试
@@ -87,7 +103,7 @@ cd server
 npm test
 ```
 
-运行 53 个测试用例，覆盖接口和页面更新时间解析逻辑。
+运行 63 个测试用例，覆盖接口、页面更新时间解析逻辑和 API Key 认证。
 
 ## 技术栈
 
@@ -100,6 +116,8 @@ npm test
 
 - [SDK 接入指南](sdk-integration.md)
 - [API 接口文档](api-reference.md)
+- [MCP 接入指南](mcp-integration.md)
+- [CLI 命令参考](cli-reference.md)
 - [部署指南](deployment.md)
 - [架构设计](architecture.md)
 - [爬虫识别库](bot-database.md)

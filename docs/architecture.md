@@ -97,20 +97,72 @@ SQLite（/opt/monitor/server/data/monitor.db）
 | 看板查询 | 索引优化（site_id + ts） |
 | 前端图表 | ECharts CDN，按需渲染 |
 
+## AI 原生架构（v2.0）
+
+v2.0 引入了 AI 原生设计，让任何 AI 系统都能轻松访问监控数据。
+
+### 三种访问方式
+
+```
+                    ┌─────────────┐
+                    │  SQLite DB  │
+                    └──────┬──────┘
+                           │
+           ┌───────────────┼───────────────┐
+           │               │               │
+    ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+    │  HTTP API   │ │  MCP Server │ │    CLI      │
+    │  (Express)  │ │  (stdio)    │ │  (terminal) │
+    └──────┬──────┘ └──────┬──────┘ └──────┬──────┘
+           │               │               │
+    ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+    │  Frontend   │ │ AI Assistant│ │   Human     │
+    │  Dashboard  │ │ (Claude等)  │ │   (终端)    │
+    └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### 共享模块
+
+- `shared/db.js`：数据库连接管理，三方复用
+- `shared/queries.js`：通用查询函数，三方复用
+- `server/lib/sitemap-service.js`：Sitemap 分析服务，HTTP 和 MCP 共用
+
+### MCP Server
+
+MCP (Model Context Protocol) 是 AI 助手调用外部工具的标准协议。
+
+- 14 个工具覆盖所有监控数据
+- stdio 传输方式
+- 直接读取 SQLite（WAL 模式支持并发读写）
+
+### CLI 工具
+
+- 命令行访问所有监控数据
+- 支持表格和 JSON 两种输出格式
+- 可全局安装（`npm link`）
+
+### API Key 认证
+
+- 通过 `API_KEY` 环境变量启用
+- 支持 Header 和 Query 两种方式
+- `/api/collect` 和 `/healthz` 不需要认证
+
 ## 安全考虑
 
 | 风险 | 措施 |
 |------|------|
 | SDK 被滥用上报假数据 | site_id 验证，后续可加域名白名单 |
-| 看板 API 被未授权访问 | 后续可加 API Key |
+| 看板 API 被未授权访问 | API Key 认证（可选） |
 | SQL 注入 | 使用参数化查询（better-sqlite3） |
 | XSS | 前端输出全部 esc() 转义 |
+| SSRF | Sitemap API 禁止 IP、内网地址 |
 
 ## 后续扩展方向
 
-1. **告警系统**：爬虫访问量异常时通知（邮件/Webhook）
-2. **IP 段验证**：验证 Googlebot 等是否来自 Google 官方 IP
-3. **自定义事件**：允许 SDK 上报自定义业务事件
-4. **多站点对比**：跨站点数据对比看板
-5. **数据导出**：CSV/JSON 导出
-6. **API Key 认证**：看板 API 访问控制
+1. **AI 助手网页界面**：对话式查询监控数据
+2. **告警系统**：爬虫访问量异常时通知（邮件/Webhook）
+3. **IP 段验证**：验证 Googlebot 等是否来自 Google 官方 IP
+4. **自定义事件**：允许 SDK 上报自定义业务事件
+5. **多站点对比**：跨站点数据对比看板
+6. **数据导出**：CSV/JSON 导出
+7. **搜索功能**：全文搜索监控数据

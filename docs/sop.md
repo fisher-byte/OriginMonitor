@@ -13,7 +13,7 @@
 cd server
 node tests/test-api.js
 ```
-- 所有测试必须通过（当前 48 个用例）
+- 所有测试必须通过（当前 63 个用例）
 - 如果新增 API 端点，必须添加对应测试
 
 ### 3. 更新文档
@@ -46,11 +46,15 @@ Commit 类型：
 ```bash
 # 上传源码（不要上传本地 node_modules）
 rsync -av --delete --exclude node_modules --exclude data "server/" root@YOUR_SERVER_IP:/opt/monitor/server/
+rsync -av --delete --exclude node_modules "shared/" root@YOUR_SERVER_IP:/opt/monitor/shared/
+rsync -av --delete --exclude node_modules "mcp/" root@YOUR_SERVER_IP:/opt/monitor/mcp/
+rsync -av --delete --exclude node_modules "cli/" root@YOUR_SERVER_IP:/opt/monitor/cli/
 scp frontend/index.html root@YOUR_SERVER_IP:/opt/monitor/frontend/
 scp sdk/tracker.js root@YOUR_SERVER_IP:/opt/monitor/sdk/
+scp package.json root@YOUR_SERVER_IP:/opt/monitor/
 
 # 在服务器安装/重建依赖，再重启服务
-ssh root@YOUR_SERVER_IP "cd /opt/monitor/server && npm install --production && pm2 restart monitor"
+ssh root@YOUR_SERVER_IP "cd /opt/monitor && npm install --production && cd server && npm install --production && pm2 restart monitor"
 ```
 
 ### 6. 验证线上功能

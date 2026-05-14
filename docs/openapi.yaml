@@ -1,0 +1,502 @@
+openapi: 3.0.3
+info:
+  title: OriginMonitor API
+  description: AI-native website monitoring - crawler tracking + visitor analytics
+  version: 2.0.0
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: query
+      name: api_key
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Site:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Overview:
+      type: object
+      properties:
+        total_pv:
+          type: integer
+        bot_pv:
+          type: integer
+        human_pv:
+          type: integer
+        uv:
+          type: integer
+
+    TrendEntry:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+        total:
+          type: integer
+        bot:
+          type: integer
+        human:
+          type: integer
+        uv:
+          type: integer
+
+    BotEntry:
+      type: object
+      properties:
+        bot_name:
+          type: string
+        bot_family:
+          type: string
+        count:
+          type: integer
+        unique_pages:
+          type: integer
+        last_seen:
+          type: string
+
+    PageEntry:
+      type: object
+      properties:
+        page_url:
+          type: string
+        total:
+          type: integer
+        bot_count:
+          type: integer
+        human_count:
+          type: integer
+        bot_names:
+          type: string
+
+security:
+  - apiKey: []
+  - bearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  ts:
+                    type: integer
+
+  /api/collect:
+    post:
+      summary: SDK data ingestion
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [site_id]
+              properties:
+                site_id:
+                  type: string
+                  format: uuid
+                ts:
+                  type: integer
+                page_url:
+                  type: string
+                ref:
+                  type: string
+                ua:
+                  type: string
+                visitor:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    screen:
+                      type: string
+                    device:
+                      type: string
+                    os:
+                      type: string
+                    browser:
+                      type: string
+                    language:
+                      type: string
+                    scroll_depth:
+                      type: integer
+                    stay_time:
+                      type: integer
+                events:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      method:
+                        type: string
+                      status:
+                        type: integer
+                      duration:
+                        type: integer
+                      type:
+                        type: string
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Missing site_id
+        '404':
+          description: Invalid site_id
+
+  /api/sites:
+    get:
+      summary: List all sites
+      responses:
+        '200':
+          description: Site list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Site'
+    post:
+      summary: Create a new site
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                domain:
+                  type: string
+      responses:
+        '200':
+          description: Site created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  site_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  domain:
+                    type: string
+
+  /api/sites/{id}:
+    get:
+      summary: Get site details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Site details
+        '404':
+          description: Site not found
+    delete:
+      summary: Delete a site
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Site deleted
+        '404':
+          description: Site not found
+
+  /api/dashboard/overview:
+    get:
+      summary: Get PV/UV overview
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+      responses:
+        '200':
+          description: Overview data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Overview'
+                  hours:
+                    type: integer
+
+  /api/dashboard/trend:
+    get:
+      summary: Get daily traffic trend
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrendEntry'
+
+  /api/dashboard/bots:
+    get:
+      summary: Get bot ranking
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 168
+      responses:
+        '200':
+          description: Bot ranking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BotEntry'
+
+  /api/dashboard/pages:
+    get:
+      summary: Get page ranking
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 168
+        - name: limit
+          in: query
+          schema:
+            type: string
+            default: "20"
+      responses:
+        '200':
+          description: Page ranking
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PageEntry'
+
+  /api/dashboard/realtime:
+    get:
+      summary: Get live bot activity
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: minutes
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: Realtime bot activity
+
+  /api/dashboard/visitors:
+    get:
+      summary: Get visitor analytics
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+      responses:
+        '200':
+          description: Visitor stats
+
+  /api/dashboard/devices:
+    get:
+      summary: Get device distribution
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 168
+      responses:
+        '200':
+          description: Device data
+
+  /api/dashboard/referrers:
+    get:
+      summary: Get traffic sources
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 168
+      responses:
+        '200':
+          description: Referrer data
+
+  /api/dashboard/performance:
+    get:
+      summary: Get performance metrics
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 168
+      responses:
+        '200':
+          description: Performance data
+
+  /api/sitemap/analyze:
+    get:
+      summary: Analyze sitemap vs crawl data
+      parameters:
+        - name: site_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: domain
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 720
+      responses:
+        '200':
+          description: Sitemap analysis

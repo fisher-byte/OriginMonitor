@@ -5,10 +5,11 @@
 </p>
 
 <h1 align="center">OriginMonitor</h1>
-<p align="center" style="color:#6B7280;font-size:1.1rem;">One-line SDK for AI crawler monitoring & visitor analytics</p>
+<p align="center" style="color:#6B7280;font-size:1.1rem;">AI-native website monitoring: crawler tracking + visitor analytics</p>
 
 <p align="center">
-  <strong>Track which AI bots are crawling your site, what pages they index, and how your human traffic compares.</strong>
+  <strong>Track which AI bots are crawling your site, what pages they index, and how your human traffic compares.<br>
+  Access data via REST API, MCP Server, or CLI.</strong>
 </p>
 
 ---
@@ -23,6 +24,8 @@ OriginMonitor is a lightweight analytics platform that helps you understand how 
 - **Sitemap Cross-reference** — Fetch your sitemap.xml and see which pages have been crawled by AI
 - **Real-time Feed** — Watch bot activity happen live on your site
 - **Visitor Analytics** — Standard PV/UV, device, referrer, and engagement metrics
+- **AI-Native Access** — MCP Server for AI assistants, CLI for terminal, REST API for everything else
+- **API Key Auth** — Optional authentication for dashboard APIs
 
 ## Quick Start
 
@@ -67,23 +70,36 @@ Open `http://localhost:3000` to see your analytics.
 
 ```
 OriginMonitor/
-├── sdk/tracker.js            # Client SDK (< 5KB, zero dependencies)
+├── sdk/tracker.js              # Client SDK (< 5KB, zero dependencies)
 ├── server/
-│   ├── index.js              # Express entry point
+│   ├── index.js                # Express entry point
 │   ├── routes/
-│   │   ├── collect.js        # POST /api/collect — SDK data ingestion
-│   │   ├── dashboard.js      # GET /api/dashboard/* — Analytics queries
-│   │   ├── sites.js          # CRUD /api/sites
-│   │   └── sitemap.js        # GET /api/sitemap/analyze — Sitemap crawler
+│   │   ├── collect.js          # POST /api/collect — SDK data ingestion
+│   │   ├── dashboard.js        # GET /api/dashboard/* — Analytics queries
+│   │   ├── sites.js            # CRUD /api/sites
+│   │   └── sitemap.js          # GET /api/sitemap/analyze — Sitemap crawler
+│   ├── lib/
+│   │   └── sitemap-service.js  # Sitemap analysis (reusable)
 │   ├── db/
-│   │   ├── init.js           # SQLite connection manager
-│   │   └── schema.sql        # Database schema
+│   │   ├── init.js             # SQLite connection manager
+│   │   └── schema.sql          # Database schema
 │   ├── utils/
-│   │   └── bot-classify.js   # User-Agent bot detection (22+ patterns)
+│   │   └── bot-classify.js     # User-Agent bot detection (22+ patterns)
 │   └── middleware/
-│       └── cors.js           # CORS configuration
-├── frontend/index.html       # Single-page dashboard (ECharts)
-└── docs/                     # Documentation
+│       ├── cors.js             # CORS configuration
+│       └── auth.js             # API Key authentication
+├── shared/
+│   ├── db.js                   # Shared database module
+│   └── queries.js              # Shared query functions
+├── mcp/
+│   ├── index.js                # MCP Server (14 tools for AI assistants)
+│   └── README.md               # MCP configuration guide
+├── cli/
+│   ├── index.js                # CLI entry point
+│   ├── commands.js             # Command definitions
+│   └── formatters.js           # Output formatters
+├── frontend/index.html         # Single-page dashboard (ECharts)
+└── docs/                       # Documentation
 ```
 
 ## Tech Stack
@@ -117,6 +133,35 @@ Recognized AI/search crawlers:
 | Cohere | cohere-ai |
 | + Generic | Any UA matching bot/crawler/spider pattern |
 
+## AI-Native Access
+
+### MCP Server
+
+Let AI assistants query monitoring data directly:
+
+```json
+{
+  "mcpServers": {
+    "origin-monitor": {
+      "command": "node",
+      "args": ["./mcp/index.js"]
+    }
+  }
+}
+```
+
+14 tools available: `list_sites`, `get_overview`, `get_trend`, `get_bots`, `get_pages`, `get_realtime`, `analyze_sitemap`, etc. See [MCP docs](docs/mcp-integration.md).
+
+### CLI
+
+```bash
+origin-monitor sites list
+origin-monitor overview <site-id> --hours 168
+origin-monitor bots <site-id> --json
+```
+
+See [CLI docs](docs/cli-reference.md).
+
 ## API Reference
 
 | Endpoint | Method | Description |
@@ -133,6 +178,9 @@ Recognized AI/search crawlers:
 | `/api/dashboard/devices` | GET | Device/OS/browser distribution |
 | `/api/dashboard/referrers` | GET | Traffic source ranking |
 | `/api/sitemap/analyze` | GET | Sitemap crawl analysis |
+| `/healthz` | GET | Health check |
+
+**Authentication:** Optional API Key via `API_KEY` env var. See [API docs](docs/api-reference.md).
 
 ## Deployment
 

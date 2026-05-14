@@ -211,3 +211,53 @@ PV/UV 趋势。
 
 **错误：**
 - 404：网站不存在
+
+---
+
+## API Key 认证
+
+当环境变量 `API_KEY` 设置后，以下 API 需要认证：
+
+- `/api/dashboard/*`
+- `/api/sites/*`
+- `/api/sitemap/*`
+
+**不需要认证的端点：**
+
+- `/api/collect`（SDK 数据上报）
+- `/healthz`（健康检查）
+
+**认证方式：**
+
+1. Header: `Authorization: Bearer <api-key>`
+2. Query: `?api_key=<api-key>`
+
+**错误响应：**
+
+```json
+{ "error": "Unauthorized: invalid or missing API key" }
+```
+
+---
+
+## MCP Server
+
+MCP (Model Context Protocol) 让 AI 助手直接查询监控数据。
+
+详细配置请参考 [MCP 接入指南](mcp-integration.md)。
+
+**可用工具：** list_sites, get_site, get_overview, get_trend, get_bots, get_pages, get_realtime, get_visitors, get_devices, get_referrers, get_performance, analyze_sitemap, create_site, delete_site
+
+---
+
+## CLI 工具
+
+命令行访问监控数据。
+
+详细用法请参考 [CLI 命令参考](cli-reference.md)。
+
+```bash
+origin-monitor sites list
+origin-monitor overview <site-id> --hours 24
+origin-monitor bots <site-id> --json
+```

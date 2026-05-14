@@ -6,6 +6,7 @@
 
 const http = require('http');
 const sitemapHelpers = require('../routes/sitemap')._private;
+const { apiKeyAuth } = require('../middleware/auth');
 
 const BASE = 'http://localhost:3000';
 let siteId = '';
@@ -75,6 +76,72 @@ function testSitemapHelpers() {
     sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd) === '2026-05-13T18:00:00+08:00',
     `got ${sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd)}`
   );
+}
+
+function testAuthMiddleware() {
+  console.log('\n[0b] API Key 认证中间件');
+
+  function mockReqRes(authHeader, queryKey) {
+    const req = {
+      headers: authHeader ? { authorization: authHeader } : {},
+      query: queryKey ? { api_key: queryKey } : {},
+    };
+    let statusCode = null;
+    let jsonBody = null;
+    const res = {
+      status(code) { statusCode = code; return res; },
+      json(body) { jsonBody = body; },
+    };
+    return { req, res, getResult: () => ({ statusCode, jsonBody }) };
+  }
+
+  // Save original env
+  const origKey = process.env.API_KEY;
+
+  // Test 1: No API_KEY set → skip auth
+  delete process.env.API_KEY;
+  let called = false;
+  apiKeyAuth({}, {}, () => { called = true; });
+  assert('无 API_KEY 时跳过认证', called === true);
+
+  // Test 2: API_KEY set, no credentials → 401
+  process.env.API_KEY = 'test-secret-key';
+  const t2 = mockReqRes();
+  apiKeyAuth(t2.req, t2.res, () => {});
+  const r2 = t2.getResult();
+  assert('无凭证时返回 401', r2.statusCode === 401, `got ${r2.statusCode}`);
+
+  // Test 3: Valid Bearer token → pass
+  process.env.API_KEY = 'test-secret-key';
+  let t3Called = false;
+  const t3 = mockReqRes('Bearer test-secret-key');
+  apiKeyAuth(t3.req, t3.res, () => { t3Called = true; });
+  assert('有效 Bearer token 通过认证', t3Called === true);
+
+  // Test 4: Invalid Bearer token → 401
+  process.env.API_KEY = 'test-secret-key';
+  const t4 = mockReqRes('Bearer wrong-key');
+  apiKeyAuth(t4.req, t4.res, () => {});
+  const r4 = t4.getResult();
+  assert('无效 Bearer token 返回 401', r4.statusCode === 401, `got ${r4.statusCode}`);
+
+  // Test 5: Valid query param → pass
+  process.env.API_KEY = 'test-secret-key';
+  let t5Called = false;
+  const t5 = mockReqRes(null, 'test-secret-key');
+  apiKeyAuth(t5.req, t5.res, () => { t5Called = true; });
+  assert('有效 query 参数通过认证', t5Called === true);
+
+  // Test 6: Invalid query param → 401
+  process.env.API_KEY = 'test-secret-key';
+  const t6 = mockReqRes(null, 'wrong-key');
+  apiKeyAuth(t6.req, t6.res, () => {});
+  const r6 = t6.getResult();
+  assert('无效 query 参数返回 401', r6.statusCode === 401, `got ${r6.statusCode}`);
+
+  // Restore env
+  if (origKey) process.env.API_KEY = origKey;
+  else delete process.env.API_KEY;
 }
 
 async function testSites() {
@@ -256,6 +323,7 @@ async function run() {
 
   try {
     testSitemapHelpers();
+    testAuthMiddleware();
     await testSites();
     await testSiteDelete();
     await testCollect();
