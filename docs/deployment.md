@@ -3,9 +3,8 @@
 ## 腾讯云部署（已完成）
 
 **服务器信息：**
-- IP：`139.199.73.159`
-- 内网：`172.16.0.10`
-- 系统：TencentOS Server 4.4 (x86_64)
+- IP：`YOUR_SERVER_IP`
+- 系统：Linux (x86_64)
 - 项目路径：`/opt/monitor/`
 
 ### 当前部署状态
@@ -14,26 +13,26 @@
 - [x] PM2 进程管理已配置
 - [x] Nginx 反向代理已配置
 - [x] 开机自启动已启用
-- [x] 42 个 API 测试全部通过
+- [x] 53 个测试全部通过
 
 ### 访问地址
 
-- 看板：http://139.199.73.159/index.html
-- API：http://139.199.73.159/api/
-- SDK：http://139.199.73.159/sdk/tracker.js
-- 健康检查：http://139.199.73.159/healthz
+- 看板：http://YOUR_SERVER_IP/index.html
+- API：http://YOUR_SERVER_IP/api/
+- SDK：http://YOUR_SERVER_IP/sdk/tracker.js
+- 健康检查：http://YOUR_SERVER_IP/healthz
 
 ### SDK 接入示例
 
 ```html
-<script src="http://139.199.73.159/sdk/tracker.js" data-site-id="YOUR_SITE_ID" async></script>
+<script src="http://YOUR_SERVER_IP/sdk/tracker.js" data-site-id="YOUR_SITE_ID" async></script>
 ```
 
 ### 常用运维命令
 
 ```bash
 # SSH 登录
-ssh root@139.199.73.159
+ssh root@YOUR_SERVER_IP
 
 # 查看服务状态
 pm2 status
@@ -54,13 +53,22 @@ nginx -t && nginx -s reload
 ### 更新部署
 
 ```bash
-# 本地打包上传
-scp -r server/ root@139.199.73.159:/opt/monitor/
-scp sdk/tracker.js root@139.199.73.159:/opt/monitor/sdk/
-scp frontend/index.html root@139.199.73.159:/opt/monitor/frontend/
+# 上传源码（排除本地 node_modules / data）
+rsync -av --delete --exclude node_modules --exclude data "server/" root@YOUR_SERVER_IP:/opt/monitor/server/
+scp sdk/tracker.js root@YOUR_SERVER_IP:/opt/monitor/sdk/
+scp frontend/index.html root@YOUR_SERVER_IP:/opt/monitor/frontend/
 
-# 服务器重启
-ssh root@139.199.73.159 "cd /opt/monitor/server && pm2 restart monitor"
+# 服务器安装依赖并重启
+ssh root@YOUR_SERVER_IP "cd /opt/monitor/server && npm install --production && pm2 restart monitor"
+```
+
+**重要：**
+- 不要把本地 `server/node_modules` 直接传到服务器
+- `better-sqlite3` 这类原生模块需要在服务器本机重新安装/重编译
+- 如果误传导致报错 `invalid ELF header`，执行：
+
+```bash
+ssh root@YOUR_SERVER_IP "cd /opt/monitor/server && npm rebuild better-sqlite3 --build-from-source && pm2 restart monitor"
 ```
 
 ### 安全注意事项
@@ -77,7 +85,7 @@ ssh root@139.199.73.159 "cd /opt/monitor/server && pm2 restart monitor"
 ```nginx
 server {
     listen 80;
-    server_name 139.199.73.159;
+    server_name YOUR_SERVER_IP;
 
     location / {
         proxy_pass http://127.0.0.1:3000;

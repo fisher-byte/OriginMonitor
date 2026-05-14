@@ -2,3 +2,8 @@ node_modules/
 server/data/
 .env
 .DS_Store
+.claude/
+prompt.md
+radarai-analysis-report.md
+*.db-shm
+*.db-wal

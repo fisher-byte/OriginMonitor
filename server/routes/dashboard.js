@@ -11,6 +11,28 @@ function getSinceTs(hours) {
   return Math.floor(Date.now() / 1000) - hours * 3600;
 }
 
+function buildPagesQuery(withLimit) {
+  return `
+    SELECT
+      page_url,
+      COUNT(*) as total,
+      SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) as bot_count,
+      SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) as human_count,
+      GROUP_CONCAT(DISTINCT CASE WHEN is_bot = 1 THEN bot_name END) as bot_names,
+      MAX(ts) as last_seen_ts,
+      MAX(CASE WHEN is_bot = 1 THEN ts END) as last_bot_ts,
+      MAX(CASE WHEN is_bot = 0 THEN ts END) as last_human_ts,
+      MAX(created_at) as last_seen_at,
+      MAX(CASE WHEN is_bot = 1 THEN created_at END) as last_bot_seen_at,
+      MAX(CASE WHEN is_bot = 0 THEN created_at END) as last_human_seen_at
+    FROM page_events
+    WHERE site_id = ? AND ts >= ?
+    GROUP BY page_url
+    ORDER BY total DESC
+    ${withLimit ? 'LIMIT ?' : ''}
+  `;
+}
+
 // 概览：总 PV、爬虫 PV、人类 PV、UV
 router.get('/overview', (req, res) => {
   const siteId = getSiteId(req);
@@ -85,22 +107,14 @@ router.get('/pages', (req, res) => {
 
   const db = getDb();
   const hours = parseInt(req.query.hours) || 24 * 7;
-  const limit = parseInt(req.query.limit) || 20;
+  const limitParam = req.query.limit;
+  const useAll = !limitParam || String(limitParam).toLowerCase() === 'all';
+  const limit = parseInt(limitParam, 10) || 20;
   const since = getSinceTs(hours);
 
-  const rows = db.prepare(`
-    SELECT
-      page_url,
-      COUNT(*) as total,
-      SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) as bot_count,
-      SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) as human_count,
-      GROUP_CONCAT(DISTINCT CASE WHEN is_bot = 1 THEN bot_name END) as bot_names
-    FROM page_events
-    WHERE site_id = ? AND ts >= ?
-    GROUP BY page_url
-    ORDER BY total DESC
-    LIMIT ?
-  `).all(siteId, since, limit);
+  const rows = useAll
+    ? db.prepare(buildPagesQuery(false)).all(siteId, since)
+    : db.prepare(buildPagesQuery(true)).all(siteId, since, limit);
 
   res.json({ success: true, data: rows, hours });
 });

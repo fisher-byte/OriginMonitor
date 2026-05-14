@@ -5,6 +5,7 @@
  */
 
 const http = require('http');
+const sitemapHelpers = require('../routes/sitemap')._private;
 
 const BASE = 'http://localhost:3000';
 let siteId = '';
@@ -43,6 +44,37 @@ function assert(name, condition, detail) {
     console.log(`  ✗ ${name}${detail ? ' — ' + detail : ''}`);
     failed++;
   }
+}
+
+function testSitemapHelpers() {
+  console.log('\n[0] Sitemap / 页面更新时间辅助逻辑');
+
+  const sitemapXml = [
+    '<urlset>',
+    '  <url><loc>https://example.com/a</loc><lastmod>2026-05-14T10:00:00+08:00</lastmod></url>',
+    '  <url><loc>https://example.com/b</loc></url>',
+    '</urlset>'
+  ].join('');
+  const entries = sitemapHelpers.parseSitemapEntries(sitemapXml);
+  assert('可解析 sitemap url 条目', entries.length === 2, `got ${entries.length}`);
+  assert('可读取 sitemap lastmod', entries[0].lastmod === '2026-05-14T10:00:00+08:00', `got ${entries[0].lastmod}`);
+
+  const normalized = sitemapHelpers.normalizeUpdatedValue('2026-05-14T10:00:00+08:00');
+  assert('可标准化更新时间', normalized.ts !== null, `got ${normalized.ts}`);
+
+  const htmlMeta = '<html><head><meta property="article:modified_time" content="2026-05-14T09:30:00+08:00"></head></html>';
+  assert(
+    '可从 HTML meta 提取更新时间',
+    sitemapHelpers.extractUpdatedFromHtml(htmlMeta) === '2026-05-14T09:30:00+08:00',
+    `got ${sitemapHelpers.extractUpdatedFromHtml(htmlMeta)}`
+  );
+
+  const htmlJsonLd = '<script type="application/ld+json">{"dateModified":"2026-05-13T18:00:00+08:00"}</script>';
+  assert(
+    '可从 JSON-LD 提取更新时间',
+    sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd) === '2026-05-13T18:00:00+08:00',
+    `got ${sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd)}`
+  );
 }
 
 async function testSites() {
@@ -210,12 +242,20 @@ async function testDashboard() {
   const health = await request('GET', '/healthz');
   assert('状态码 200', health.status === 200);
   assert('status = ok', health.body.status === 'ok');
+
+  console.log('\n[25] GET /api/sitemap/analyze — 不可达域名优雅降级');
+  const sitemapFail = await request('GET', `/api/sitemap/analyze?site_id=${siteId}&domain=test.invalid&hours=24`);
+  assert('状态码 200', sitemapFail.status === 200, `got ${sitemapFail.status}`);
+  assert('success = false', sitemapFail.body.success === false, `got ${sitemapFail.body.success}`);
+  assert('返回空 data', Array.isArray(sitemapFail.body.data) && sitemapFail.body.data.length === 0);
+  assert('返回错误说明', typeof sitemapFail.body.error === 'string' && sitemapFail.body.error.length > 0);
 }
 
 async function run() {
   console.log('=== Monitor API 测试 ===\n');
 
   try {
+    testSitemapHelpers();
     await testSites();
     await testSiteDelete();
     await testCollect();

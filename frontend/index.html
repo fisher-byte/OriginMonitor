@@ -299,13 +299,14 @@
               <thead>
                 <tr>
                   <th data-i18n="thPage">Page</th>
+                  <th class="sortable" data-sort="updated" onclick="sortOverviewTable('updated')" data-i18n="thPageUpdated">页面更新时间</th>
                   <th class="sortable" data-sort="bot" onclick="sortOverviewTable('bot')">AI visits</th>
                   <th class="sortable" data-sort="human" onclick="sortOverviewTable('human')">Human visits</th>
                   <th data-i18n="thAiBots">AI Bots</th>
                   <th class="sortable" data-sort="ratio" onclick="sortOverviewTable('ratio')">AI Ratio</th>
                 </tr>
               </thead>
-              <tbody id="overviewPageBody"><tr><td colspan="5" class="empty">No data</td></tr></tbody>
+              <tbody id="overviewPageBody"><tr><td colspan="6" class="empty">No data</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -344,13 +345,14 @@
               <thead>
                 <tr>
                   <th data-i18n="thPage">Page</th>
+                  <th class="sortable" data-sort="updated" onclick="sortPageTable('updated')" data-i18n="thPageUpdated">页面更新时间</th>
                   <th class="sortable" data-sort="bot" onclick="sortPageTable('bot')">AI visits</th>
                   <th class="sortable" data-sort="human" onclick="sortPageTable('human')">Human visits</th>
                   <th data-i18n="thAiBots">AI Bots</th>
                   <th class="sortable" data-sort="ratio" onclick="sortPageTable('ratio')">AI Ratio</th>
                 </tr>
               </thead>
-              <tbody id="pageRankBody"><tr><td colspan="5" class="empty">No data</td></tr></tbody>
+              <tbody id="pageRankBody"><tr><td colspan="6" class="empty">No data</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -382,8 +384,8 @@
     var overviewData = {}; // store raw overview data for toggle
     var allPageData = [];
     var allOverviewPageData = [];
-    var overviewSort = { key: 'bot', dir: 'desc' };
-    var pageSort = { key: 'bot', dir: 'desc' };
+    var overviewSort = { key: 'updated', dir: 'desc' };
+    var pageSort = { key: 'updated', dir: 'desc' };
     var realtimeItems = [];
     var charts = {};
 
@@ -421,7 +423,7 @@
         chartAiTrend: 'AI 来源流量趋势', chartBotHuman: '爬虫 vs 人类', chartFamilies: '爬虫家族分布',
         chartAiBreakdown: 'AI 来源细分', botRank: 'AI 爬虫排行', allPages: '全部页面分析',
         liveBots: '实时爬虫活动', waitingBots: '加载爬虫数据...', loadSitemap: '加载 Sitemap',
-        thPage: '页面', thAiVisits: 'AI 访问', thHumanVisits: '人类访问', thAiBots: 'AI 爬虫', thAiRatio: 'AI 占比',
+        thPage: '页面', thPageUpdated: '页面更新时间', thAiVisits: 'AI 访问', thHumanVisits: '人类访问', thAiBots: 'AI 爬虫', thAiRatio: 'AI 占比',
         thFamily: '家族', thVisits: '访问次数', thPages: '页面数', thLastSeen: '最后出现',
         scTotal: '总 PV', scBot: 'AI 爬虫 PV', scHuman: '人类 PV', scUv: '独立访客',
         last1d: '今天', last7d: '最近 7 天', last28d: '最近 28 天', last90d: '最近 90 天', custom: '自定义',
@@ -437,7 +439,7 @@
         chartAiTrend: 'AI Source Traffic', chartBotHuman: 'Bot vs Human', chartFamilies: 'Bot Families',
         chartAiBreakdown: 'AI Source Breakdown', botRank: 'Bot Rankings', allPages: 'All Pages Performance',
         liveBots: 'Live Bot Activity', waitingBots: 'Loading bot activity...', loadSitemap: 'Load Sitemap',
-        thPage: 'Page', thAiVisits: 'AI visits', thHumanVisits: 'Human visits', thAiBots: 'AI Bots', thAiRatio: 'AI Ratio',
+        thPage: 'Page', thPageUpdated: 'Page updated', thAiVisits: 'AI visits', thHumanVisits: 'Human visits', thAiBots: 'AI Bots', thAiRatio: 'AI Ratio',
         thFamily: 'Family', thVisits: 'Visits', thPages: 'Pages', thLastSeen: 'Last seen',
         scTotal: 'Total PV', scBot: 'AI Bot PV', scHuman: 'Human PV', scUv: 'Unique Visitors',
         last1d: 'Today', last7d: 'Last 7 days', last28d: 'Last 28 days', last90d: 'Last 90 days', custom: 'Custom',
@@ -640,7 +642,7 @@
       }
     }
 
-    function loadOverview() {
+    function loadOverview(includePages) {
       if (!currentSiteId) return;
       var hours = currentDays * 24;
       fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
@@ -665,12 +667,12 @@
       fetch(API + '/dashboard/bots?site_id=' + currentSiteId + '&hours=' + hours)
         .then(function(r) { return r.json(); })
         .then(function(json) { renderFamiliesChart(json.data || []); });
-      loadOverviewPages();
+      if (includePages !== false) loadOverviewPages();
     }
 
     function loadOverviewPages() {
       if (!currentSiteId) return;
-      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays * 24) + '&limit=200')
+      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays * 24) + '&limit=all')
         .then(function(r) { return r.json(); })
         .then(function(json) {
           var crawlData = json.data || [];
@@ -730,7 +732,12 @@
     // --- Pages ---
     function loadPages() {
       if (!currentSiteId) return;
-      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=200')
+      var domain = getSelectedDomain();
+      if (domain) {
+        loadSitemap(true);
+        return;
+      }
+      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=all')
         .then(function(r) { return r.json(); })
         .then(function(json) { allPageData = json.data || []; renderPagesSorted(); });
     }
@@ -746,18 +753,27 @@
       renderPagesSorted();
     }
 
-    function loadSitemap() {
+    function loadSitemap(silent) {
       if (!currentSiteId) return;
       var domain = getSelectedDomain();
       if (!domain) { alert(t('noDomain')); return; }
-      document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="5" class="empty">Loading sitemap...</td></tr>';
+      if (!silent) document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">Loading sitemap...</td></tr>';
       fetch(API + '/sitemap/analyze?site_id=' + currentSiteId + '&domain=' + encodeURIComponent(domain) + '&hours=' + (currentDays*24))
         .then(function(r) { return r.json(); })
         .then(function(json) {
-          if (json.error) { document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="5" class="empty">' + esc(json.error) + '</td></tr>'; return; }
+          if (json.success === false) {
+            if (silent) {
+              fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=all')
+                .then(function(r) { return r.json(); })
+                .then(function(fallbackJson) { allPageData = fallbackJson.data || []; renderPagesSorted(); });
+            } else {
+              document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">' + esc(json.error || t('loadFail')) + '</td></tr>';
+            }
+            return;
+          }
           allPageData = json.data || []; renderPagesSorted();
         })
-        .catch(function() { document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="5" class="empty">' + t('loadFail') + '</td></tr>'; });
+        .catch(function() { document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">' + t('loadFail') + '</td></tr>'; });
     }
 
     // --- Realtime (append mode) ---
@@ -796,6 +812,15 @@
         loadRealtime(true);
       }
     }, 30000);
+
+    setInterval(function() {
+      if (!currentSiteId || document.hidden) return;
+      var overviewActive = document.getElementById('panel-overview').classList.contains('active');
+      var pagesActive = document.getElementById('panel-pages').classList.contains('active');
+      loadOverview(overviewActive);
+      loadAiTraffic();
+      if (pagesActive) loadPages();
+    }, 60000);
 
     // --- Chart helpers (straight lines, not smooth) ---
     function renderLineChart(id, labels, series) {
@@ -862,7 +887,7 @@
     // --- Table helpers ---
     function renderPageTable(data, bodyId) {
       var body = document.getElementById(bodyId);
-      if (!data.length) { body.innerHTML = '<tr><td colspan="5" class="empty">' + t('noData') + '</td></tr>'; return; }
+      if (!data.length) { body.innerHTML = '<tr><td colspan="6" class="empty">' + t('noData') + '</td></tr>'; return; }
       var maxBot = Math.max.apply(null, data.map(function(p) { return p.bot_count||0; })) || 1;
       var domain = getSelectedDomain();
       var base = domain ? 'https://' + domain : '';
@@ -872,7 +897,9 @@
         var barW = Math.round((p.bot_count||0)/maxBot*100);
         var bots = (p.bot_names||'').split(',').filter(Boolean).map(function(n) { var nm = n.trim(); var tip = BOT_INFO[nm] || ''; return '<span class="badge badge-ai"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '>' + esc(nm) + '</span>'; }).join('');
         var urlHtml = base ? '<a class="page-url" href="' + esc(base + p.page_url) + '" target="_blank" title="' + esc(p.page_url) + '">' + esc(p.page_url) + '</a>' : '<span class="page-url" title="' + esc(p.page_url) + '">' + esc(p.page_url) + '</span>';
+        var updatedHtml = formatPageUpdated(p.page_updated_at);
         return '<tr><td>' + urlHtml + '</td>' +
+          '<td style="white-space:nowrap;color:var(--text-sec);font-size:12px;">' + updatedHtml + '</td>' +
           '<td><div class="bar-cell"><div class="bar-track"><div class="bar-fill amber" style="width:' + barW + '%"></div></div><span class="bar-val">' + (p.bot_count||0) + '</span></div></td>' +
           '<td><span class="bar-val">' + (p.human_count||0) + '</span></td>' +
           '<td>' + (bots||'-') + '</td>' +
@@ -882,12 +909,14 @@
 
     function sortData(data, sort) {
       var arr = data.slice();
-      var key = sort.key === 'bot' ? 'bot_count' : sort.key === 'human' ? 'human_count' : 'ratio';
+      var key = sort.key === 'bot' ? 'bot_count' : sort.key === 'human' ? 'human_count' : sort.key === 'updated' ? 'page_updated_ts' : 'ratio';
       arr.sort(function(a, b) {
         var va, vb;
         if (key === 'ratio') {
           var ta = (a.bot_count||0)+(a.human_count||0), tb = (b.bot_count||0)+(b.human_count||0);
           va = ta > 0 ? a.bot_count/ta : 0; vb = tb > 0 ? b.bot_count/tb : 0;
+        } else if (key === 'page_updated_ts') {
+          va = a.page_updated_ts || 0; vb = b.page_updated_ts || 0;
         } else { va = a[key]||0; vb = b[key]||0; }
         return sort.dir === 'desc' ? vb - va : va - vb;
       });
@@ -918,6 +947,18 @@
         if (lower.indexOf(terms[i]) === -1) return false;
       }
       return true;
+    }
+
+    function formatPageUpdated(value) {
+      if (!value) return '-';
+      var d = new Date(value);
+      if (isNaN(d.getTime())) return esc(value);
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mm = String(d.getMinutes()).padStart(2, '0');
+      return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
     }
 
     function sc(label, value, color) {

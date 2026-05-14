@@ -44,27 +44,28 @@ Commit 类型：
 
 ### 5. 部署到服务器
 ```bash
-# 上传更新的文件
-scp -r server/ root@139.199.73.159:/opt/monitor/
-scp frontend/index.html root@139.199.73.159:/opt/monitor/frontend/
-scp sdk/tracker.js root@139.199.73.159:/opt/monitor/sdk/
+# 上传源码（不要上传本地 node_modules）
+rsync -av --delete --exclude node_modules --exclude data "server/" root@YOUR_SERVER_IP:/opt/monitor/server/
+scp frontend/index.html root@YOUR_SERVER_IP:/opt/monitor/frontend/
+scp sdk/tracker.js root@YOUR_SERVER_IP:/opt/monitor/sdk/
 
-# 重启服务
-ssh root@139.199.73.159 "cd /opt/monitor/server && pm2 restart monitor"
+# 在服务器安装/重建依赖，再重启服务
+ssh root@YOUR_SERVER_IP "cd /opt/monitor/server && npm install --production && pm2 restart monitor"
 ```
 
 ### 6. 验证线上功能
 ```bash
 # 健康检查
-curl http://139.199.73.159/healthz
+curl http://YOUR_SERVER_IP/healthz
 
 # 打开看板
-# http://139.199.73.159/index.html
+# http://YOUR_SERVER_IP/index.html
 ```
 
 ## 注意事项
 
 - 不要提交 `.env`、`node_modules`、`data/*.db`
+- 不要把本地 `server/node_modules` 直接上传到 Linux 服务器，原生模块会因平台不一致报错
 - 敏感信息（密码、IP）不要写入文档
 - 部署前确认测试全部通过
 - 大改动建议先在本地完整测试再部署

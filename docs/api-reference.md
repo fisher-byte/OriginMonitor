@@ -69,6 +69,11 @@ SDK 上报数据端点，CORS 开放。
 }
 ```
 
+**失败降级：**
+- 当目标域名不可达、没有 sitemap、或抓取失败时，接口会返回 `200` + `success: false`
+- 此时 `data` 为空数组，并在 `error` 字段中给出失败原因
+- 这样前端可以回退到已有页面聚合数据，而不是直接报 `500`
+
 ### GET /api/dashboard/trend
 
 按天的趋势数据。
@@ -96,6 +101,10 @@ SDK 上报数据端点，CORS 开放。
 | site_id | 必填 | 网站 ID |
 | hours | 168 | 时间窗口 |
 | limit | 20 | 返回数量 |
+
+**说明：**
+- `limit=all` 时返回当前时间窗口内的全部页面
+- 返回结果会包含页面级聚合数据，如 `bot_count`、`human_count`
 
 ### GET /api/dashboard/bots
 
@@ -135,6 +144,11 @@ PV/UV 趋势。
 | domain | 必填 | 目标域名（不含协议） |
 | hours | 720 | 统计时间窗口（小时） |
 
+**页面更新时间来源优先级：**
+1. `sitemap.xml` 中的 `<lastmod>`
+2. 页面响应头 `Last-Modified`
+3. 页面 HTML 中的 `article:modified_time`、`dateModified`、`og:updated_time`、`time[datetime]` 等常见更新时间标记
+
 **响应：**
 ```json
 {
@@ -143,6 +157,9 @@ PV/UV 趋势。
     {
       "page_url": "/blog/ai-tools",
       "full_url": "https://example.com/blog/ai-tools",
+      "page_updated_at": "2026-05-14T10:00:00+08:00",
+      "page_updated_ts": 1747188000000,
+      "page_updated_source": "sitemap_lastmod",
       "bot_count": 12,
       "human_count": 5,
       "bot_names": "GPTBot,ClaudeBot",
@@ -159,7 +176,7 @@ PV/UV 趋势。
 **安全限制：**
 - 仅支持域名，禁止 IP 地址、localhost、内网地址
 - 响应体限制 1MB
-- 子 sitemap 最多抓取 5 个
+- 子 sitemap 最多抓取 20 个
 
 ---
 
