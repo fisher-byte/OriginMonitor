@@ -99,7 +99,18 @@
     .scorecard { background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; padding: 20px; transition: box-shadow 0.2s; }
     .scorecard:hover { box-shadow: var(--shadow); }
     .sc-label { font-size: 12px; color: var(--text-sec); }
+    .sc-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .sc-value { font-size: 28px; font-weight: 400; margin-top: 4px; letter-spacing: -0.5px; }
+
+    /* Active users bar */
+    .active-bar { display: flex; gap: 24px; align-items: center; padding: 14px 20px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 16px; }
+    .active-item { display: flex; align-items: center; gap: 8px; }
+    .active-dot { width: 10px; height: 10px; border-radius: 50%; animation: pulse 2s infinite; }
+    .active-dot.amber { background: var(--amber); }
+    .active-dot.blue { background: var(--primary); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .active-num { font-size: 22px; font-weight: 500; letter-spacing: -0.5px; }
+    .active-label { font-size: 12px; color: var(--text-sec); }
 
     /* Chart card */
     .chart-card { background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
@@ -264,6 +275,10 @@
     <div class="main">
       <!-- Overview -->
       <div class="panel active" id="panel-overview">
+        <div class="active-bar" id="activeBar">
+          <div class="active-item"><div class="active-dot amber"></div><div><div class="active-num" id="activeBotNum">-</div><div class="active-label">AI 爬虫 <span data-i18n="last30min">(最近30分钟)</span></div></div></div>
+          <div class="active-item"><div class="active-dot blue"></div><div><div class="active-num" id="activeHumanNum">-</div><div class="active-label">人类访问 <span data-i18n="last30min">(最近30分钟)</span></div></div></div>
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div></div>
           <div class="pv-uv-toggle" id="pvUvToggle">
@@ -422,11 +437,12 @@
         navOverview: '概览', navAi: 'AI 流量', navPages: '页面分析', navRealtime: '实时动态',
         chartAiTrend: 'AI 来源流量趋势', chartBotHuman: '爬虫 vs 人类', chartFamilies: '爬虫家族分布',
         chartAiBreakdown: 'AI 来源细分', botRank: 'AI 爬虫排行', allPages: '全部页面分析',
-        liveBots: '实时爬虫活动', waitingBots: '加载爬虫数据...', loadSitemap: '加载 Sitemap',
+        liveBots: '实时爬虫活动', waitingBots: '暂无实时爬虫活动', loadSitemap: '加载 Sitemap',
         thPage: '页面', thPageUpdated: '页面更新时间', thAiVisits: 'AI 访问', thHumanVisits: '人类访问', thAiBots: 'AI 爬虫', thAiRatio: 'AI 占比',
         thFamily: '家族', thVisits: '访问次数', thPages: '页面数', thLastSeen: '最后出现',
         scTotal: '总 PV', scBot: 'AI 爬虫 PV', scHuman: '人类 PV', scUv: '独立访客',
         last1d: '今天', last7d: '最近 7 天', last28d: '最近 28 天', last90d: '最近 90 天', custom: '自定义',
+        last30min: '(最近30分钟)',
         selectSite: '选择网站', noData: '暂无数据', searchPages: '搜索页面...',
         created: '创建成功！', failed: '创建失败', netErr: '网络错误', enterName: '请输入网站名称',
         noDomain: '请先为该网站设置域名', loadFail: '加载 Sitemap 失败',
@@ -438,11 +454,12 @@
         navOverview: 'Overview', navAi: 'AI Traffic', navPages: 'Pages', navRealtime: 'Realtime',
         chartAiTrend: 'AI Source Traffic', chartBotHuman: 'Bot vs Human', chartFamilies: 'Bot Families',
         chartAiBreakdown: 'AI Source Breakdown', botRank: 'Bot Rankings', allPages: 'All Pages Performance',
-        liveBots: 'Live Bot Activity', waitingBots: 'Loading bot activity...', loadSitemap: 'Load Sitemap',
+        liveBots: 'Live Bot Activity', waitingBots: 'No live bot activity', loadSitemap: 'Load Sitemap',
         thPage: 'Page', thPageUpdated: 'Page updated', thAiVisits: 'AI visits', thHumanVisits: 'Human visits', thAiBots: 'AI Bots', thAiRatio: 'AI Ratio',
         thFamily: 'Family', thVisits: 'Visits', thPages: 'Pages', thLastSeen: 'Last seen',
         scTotal: 'Total PV', scBot: 'AI Bot PV', scHuman: 'Human PV', scUv: 'Unique Visitors',
         last1d: 'Today', last7d: 'Last 7 days', last28d: 'Last 28 days', last90d: 'Last 90 days', custom: 'Custom',
+        last30min: '(last 30 min)',
         selectSite: 'Select site', noData: 'No data', searchPages: 'Search pages...',
         created: 'Created successfully!', failed: 'Failed to create', netErr: 'Network error', enterName: 'Please enter a site name',
         noDomain: 'Please set a domain for this site first', loadFail: 'Failed to load sitemap',
@@ -619,6 +636,26 @@
       loadRealtime(false);
     }
 
+    function loadSitemap(silent) {
+      if (!currentSiteId) return;
+      var domain = getSelectedDomain();
+      if (!domain) { alert(t('noDomain')); return; }
+      if (!silent) document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">Loading sitemap...</td></tr>';
+      fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=all')
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          var crawlData = json.data || [];
+          fetch(API + '/sitemap/analyze?site_id=' + currentSiteId + '&domain=' + encodeURIComponent(domain) + '&hours=' + (currentDays*24))
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+              var sitemapData = json.success ? json.data : [];
+              allPageData = mergePagesData(crawlData, sitemapData);
+              renderPagesSorted();
+            })
+            .catch(function() { allPageData = crawlData; renderPagesSorted(); });
+        });
+    }
+
     // --- Overview ---
     function setMetric(m) {
       currentMetric = m;
@@ -631,26 +668,23 @@
       if (!d || !d.total_pv) return;
       if (currentMetric === 'uv') {
         document.getElementById('overviewCards').innerHTML =
-          sc(t('scUv'), d.uv || 0, 'var(--primary)') +
+          sc(t('scUv'), d.uv || 0, 'var(--primary)', lang === 'zh' ? '按设备指纹去重' : 'By device fingerprint') +
           sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)') +
           sc(t('scBot') + ' PV', d.bot_pv || 0, 'var(--amber)') +
           sc(t('scTotal') + ' PV', d.total_pv || 0);
       } else {
         document.getElementById('overviewCards').innerHTML =
           sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
-          sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') + sc(t('scUv'), d.uv || 0);
+          sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') +
+          sc(t('scUv'), d.uv || 0, null, lang === 'zh' ? '按设备指纹去重' : 'By device fingerprint');
       }
     }
 
     function loadOverview(includePages) {
       if (!currentSiteId) return;
+      loadOverviewScorecards();
+      loadActiveUsers();
       var hours = currentDays * 24;
-      fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
-        .then(function(r) { return r.json(); })
-        .then(function(json) {
-          overviewData = json.data || {};
-          renderOverviewCards();
-        });
       fetch(API + '/dashboard/trend?site_id=' + currentSiteId + '&days=' + currentDays)
         .then(function(r) { return r.json(); })
         .then(function(json) {
@@ -670,6 +704,70 @@
       if (includePages !== false) loadOverviewPages();
     }
 
+    function loadOverviewScorecards() {
+      if (!currentSiteId) return;
+      var hours = currentDays * 24;
+      fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          overviewData = json.data || {};
+          renderOverviewCards();
+        });
+    }
+
+    function loadActiveUsers() {
+      if (!currentSiteId) return;
+      fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=30')
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          var data = json.data || [];
+          var botCount = data.length;
+          var humanCount = overviewData.human_pv || 0;
+          document.getElementById('activeBotNum').textContent = botCount;
+          document.getElementById('activeHumanNum').textContent = humanCount;
+        })
+        .catch(function() {
+          document.getElementById('activeBotNum').textContent = '-';
+          document.getElementById('activeHumanNum').textContent = '-';
+        });
+    }
+
+    function mergePagesData(crawlData, sitemapData) {
+      // 以 crawl 数据为基础，合并 sitemap 的更新时间
+      var sitemapMap = {};
+      if (sitemapData && sitemapData.length) {
+        sitemapData.forEach(function(p) { sitemapMap[p.page_url] = p; });
+      }
+      var merged = crawlData.map(function(p) {
+        var sm = sitemapMap[p.page_url];
+        if (sm) {
+          p.page_updated_at = sm.page_updated_at || p.page_updated_at;
+          p.page_updated_ts = sm.page_updated_ts || p.page_updated_ts;
+          p.page_updated_source = sm.page_updated_source || p.page_updated_source;
+          p.full_url = sm.full_url || p.full_url;
+        }
+        return p;
+      });
+      // 添加 sitemap 中有但 crawl 中没有的页面
+      var crawlUrls = {};
+      crawlData.forEach(function(p) { crawlUrls[p.page_url] = true; });
+      if (sitemapData && sitemapData.length) {
+        sitemapData.forEach(function(p) {
+          if (!crawlUrls[p.page_url]) {
+            merged.push({
+              page_url: p.page_url,
+              full_url: p.full_url,
+              page_updated_at: p.page_updated_at,
+              page_updated_ts: p.page_updated_ts,
+              page_updated_source: p.page_updated_source,
+              bot_count: 0, human_count: 0, total: 0, bot_names: ''
+            });
+          }
+        });
+      }
+      return merged;
+    }
+
     function loadOverviewPages() {
       if (!currentSiteId) return;
       fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays * 24) + '&limit=all')
@@ -680,7 +778,11 @@
           if (domain) {
             fetch(API + '/sitemap/analyze?site_id=' + currentSiteId + '&domain=' + encodeURIComponent(domain) + '&hours=' + (currentDays * 24))
               .then(function(r) { return r.json(); })
-              .then(function(json) { allOverviewPageData = json.success ? json.data : crawlData; renderOverviewPages(); })
+              .then(function(json) {
+                var sitemapData = json.success ? json.data : [];
+                allOverviewPageData = mergePagesData(crawlData, sitemapData);
+                renderOverviewPages();
+              })
               .catch(function() { allOverviewPageData = crawlData; renderOverviewPages(); });
           } else {
             allOverviewPageData = crawlData; renderOverviewPages();
@@ -732,14 +834,24 @@
     // --- Pages ---
     function loadPages() {
       if (!currentSiteId) return;
-      var domain = getSelectedDomain();
-      if (domain) {
-        loadSitemap(true);
-        return;
-      }
       fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=all')
         .then(function(r) { return r.json(); })
-        .then(function(json) { allPageData = json.data || []; renderPagesSorted(); });
+        .then(function(json) {
+          var crawlData = json.data || [];
+          var domain = getSelectedDomain();
+          if (domain) {
+            fetch(API + '/sitemap/analyze?site_id=' + currentSiteId + '&domain=' + encodeURIComponent(domain) + '&hours=' + (currentDays*24))
+              .then(function(r) { return r.json(); })
+              .then(function(json) {
+                var sitemapData = json.success ? json.data : [];
+                allPageData = mergePagesData(crawlData, sitemapData);
+                renderPagesSorted();
+              })
+              .catch(function() { allPageData = crawlData; renderPagesSorted(); });
+          } else {
+            allPageData = crawlData; renderPagesSorted();
+          }
+        });
     }
     function renderPagesSorted() { renderPageTable(sortData(allPageData, pageSort), 'pageRankBody'); updateSortHeaders('#panel-pages', pageSort); }
     function filterPages() {
@@ -753,34 +865,13 @@
       renderPagesSorted();
     }
 
-    function loadSitemap(silent) {
-      if (!currentSiteId) return;
-      var domain = getSelectedDomain();
-      if (!domain) { alert(t('noDomain')); return; }
-      if (!silent) document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">Loading sitemap...</td></tr>';
-      fetch(API + '/sitemap/analyze?site_id=' + currentSiteId + '&domain=' + encodeURIComponent(domain) + '&hours=' + (currentDays*24))
-        .then(function(r) { return r.json(); })
-        .then(function(json) {
-          if (json.success === false) {
-            if (silent) {
-              fetch(API + '/dashboard/pages?site_id=' + currentSiteId + '&hours=' + (currentDays*24) + '&limit=all')
-                .then(function(r) { return r.json(); })
-                .then(function(fallbackJson) { allPageData = fallbackJson.data || []; renderPagesSorted(); });
-            } else {
-              document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">' + esc(json.error || t('loadFail')) + '</td></tr>';
-            }
-            return;
-          }
-          allPageData = json.data || []; renderPagesSorted();
-        })
-        .catch(function() { document.getElementById('pageRankBody').innerHTML = '<tr><td colspan="6" class="empty">' + t('loadFail') + '</td></tr>'; });
-    }
-
     // --- Realtime (append mode) ---
     function loadRealtime(append) {
       if (!currentSiteId) return;
-      fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=5')
-        .then(function(r) { return r.json(); })
+      var controller = new AbortController();
+      var timeout = setTimeout(function() { controller.abort(); }, 10000);
+      fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=5', { signal: controller.signal })
+        .then(function(r) { clearTimeout(timeout); return r.json(); })
         .then(function(json) {
           var data = json.data || [];
           if (append) {
@@ -793,6 +884,13 @@
             realtimeItems = data;
           }
           renderRealtimeFeed();
+        })
+        .catch(function(err) {
+          clearTimeout(timeout);
+          var el = document.getElementById('realtimeFeed');
+          if (!realtimeItems.length) {
+            el.innerHTML = '<div class="empty"><p style="color:var(--red);">' + (err.name === 'AbortError' ? '加载超时' : t('loadFail')) + '</p></div>';
+          }
         });
     }
 
@@ -813,13 +911,11 @@
       }
     }, 30000);
 
+    // Auto-refresh scorecards + active users every 60s (no chart re-render)
     setInterval(function() {
       if (!currentSiteId || document.hidden) return;
-      var overviewActive = document.getElementById('panel-overview').classList.contains('active');
-      var pagesActive = document.getElementById('panel-pages').classList.contains('active');
-      loadOverview(overviewActive);
-      loadAiTraffic();
-      if (pagesActive) loadPages();
+      loadOverviewScorecards();
+      loadActiveUsers();
     }, 60000);
 
     // --- Chart helpers (straight lines, not smooth) ---
@@ -829,21 +925,23 @@
       if (charts[id]) charts[id].dispose();
       var chart = echarts.init(el);
       charts[id] = chart;
+      var singlePoint = labels.length <= 1;
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 24, bottom: 32, left: 48, right: 16 },
+        grid: { top: 24, bottom: 52, left: 48, right: 16 },
         xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s) {
           return {
             name: s.name, type: 'line', data: s.data,
-            smooth: false, showSymbol: false,
+            smooth: false, showSymbol: singlePoint,
+            symbolSize: singlePoint ? 8 : 4,
             lineStyle: { width: 2, color: s.color },
             itemStyle: { color: s.color },
             areaStyle: s.area ? { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: s.color + '20' }, { offset: 1, color: s.color + '00' }] } } : undefined
           };
         }),
-        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 0, icon: 'roundRect', itemWidth: 12, itemHeight: 3, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
+        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 4, icon: 'roundRect', itemWidth: 12, itemHeight: 3, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
       });
       window.addEventListener('resize', function() { chart.resize(); });
     }
@@ -856,13 +954,13 @@
       charts[id] = chart;
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 16, bottom: 32, left: 48, right: 16 },
+        grid: { top: 16, bottom: 52, left: 48, right: 16 },
         xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s) {
           return { name: s.name, type: 'bar', data: s.data, itemStyle: { color: s.color, borderRadius: [2,2,0,0] }, barMaxWidth: 16 };
         }),
-        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 0, icon: 'roundRect', itemWidth: 12, itemHeight: 6, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
+        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 4, icon: 'roundRect', itemWidth: 12, itemHeight: 6, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
       });
       window.addEventListener('resize', function() { chart.resize(); });
     }
@@ -961,9 +1059,10 @@
       return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
     }
 
-    function sc(label, value, color) {
+    function sc(label, value, color, sub) {
       var s = color ? ' style="color:' + color + '"' : '';
-      return '<div class="scorecard"><div class="sc-label">' + esc(label) + '</div><div class="sc-value"' + s + '>' + Number(value).toLocaleString() + '</div></div>';
+      var subHtml = sub ? '<div class="sc-sub">' + esc(sub) + '</div>' : '';
+      return '<div class="scorecard"><div class="sc-label">' + esc(label) + '</div><div class="sc-value"' + s + '>' + Number(value).toLocaleString() + '</div>' + subHtml + '</div>';
     }
     function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
