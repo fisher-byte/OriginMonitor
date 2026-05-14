@@ -92,6 +92,17 @@ SDK 上报数据端点，CORS 开放。
 | site_id | 必填 | 网站 ID |
 | minutes | 5 | 时间窗口（分钟） |
 
+### GET /api/dashboard/active-visitors
+
+最近 N 分钟内的活跃访客数（爬虫种类数 + 人类独立访客数）。
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| site_id | 必填 | 网站 ID |
+| minutes | 30 | 时间窗口（分钟） |
+
+返回字段：`active_bots`（活跃爬虫种类数）、`active_humans`（活跃人类独立访客数）
+
 ### GET /api/dashboard/pages
 
 页面排名。

@@ -280,6 +280,13 @@ async function testDashboard() {
   assert('状态码 200', rt.status === 200);
   assert('有实时数据', rt.body.data.length > 0);
 
+  console.log('\n[14b] GET /api/dashboard/active-visitors');
+  const av = await request('GET', `/api/dashboard/active-visitors?site_id=${siteId}&minutes=30`);
+  assert('状态码 200', av.status === 200);
+  assert('有 active_bots 字段', av.body.data.active_bots !== undefined);
+  assert('有 active_humans 字段', av.body.data.active_humans !== undefined);
+  assert('active_bots >= 1', av.body.data.active_bots >= 1);
+
   console.log('\n[15] GET /api/dashboard/trend');
   const trend = await request('GET', `/api/dashboard/trend?site_id=${siteId}&days=7`);
   assert('状态码 200', trend.status === 200);

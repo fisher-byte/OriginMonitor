@@ -436,11 +436,11 @@
         addSite: '添加新网站', siteName: '网站名称', domain: '域名（可选）', cancel: '取消', create: '创建',
         navOverview: '概览', navAi: 'AI 流量', navPages: '页面分析', navRealtime: '实时动态',
         chartAiTrend: 'AI 来源流量趋势', chartBotHuman: '爬虫 vs 人类', chartFamilies: '爬虫家族分布',
-        chartAiBreakdown: 'AI 来源细分', botRank: 'AI 爬虫排行', allPages: '全部页面分析',
-        liveBots: '实时爬虫活动', waitingBots: '暂无实时爬虫活动', loadSitemap: '加载 Sitemap',
+        chartAiBreakdown: 'AI 来源细分', botRank: 'AI 爬虫排行', allPages: '页面访问分析',
+        liveBots: '实时爬虫活动', waitingBots: '暂无实时爬虫活动', waitingBotsHint: '最近30分钟内无爬虫访问记录', loadSitemap: '加载 Sitemap',
         thPage: '页面', thPageUpdated: '页面更新时间', thAiVisits: 'AI 访问', thHumanVisits: '人类访问', thAiBots: 'AI 爬虫', thAiRatio: 'AI 占比',
         thFamily: '家族', thVisits: '访问次数', thPages: '页面数', thLastSeen: '最后出现',
-        scTotal: '总 PV', scBot: 'AI 爬虫 PV', scHuman: '人类 PV', scUv: '独立访客',
+        scTotal: '总 PV', scBot: 'AI 爬虫 PV', scHuman: '人类 PV', scUv: '人类访客（UV）',
         last1d: '今天', last7d: '最近 7 天', last28d: '最近 28 天', last90d: '最近 90 天', custom: '自定义',
         last30min: '(最近30分钟)',
         selectSite: '选择网站', noData: '暂无数据', searchPages: '搜索页面...',
@@ -453,11 +453,11 @@
         addSite: 'Add new site', siteName: 'Site name', domain: 'Domain (optional)', cancel: 'Cancel', create: 'Create',
         navOverview: 'Overview', navAi: 'AI Traffic', navPages: 'Pages', navRealtime: 'Realtime',
         chartAiTrend: 'AI Source Traffic', chartBotHuman: 'Bot vs Human', chartFamilies: 'Bot Families',
-        chartAiBreakdown: 'AI Source Breakdown', botRank: 'Bot Rankings', allPages: 'All Pages Performance',
-        liveBots: 'Live Bot Activity', waitingBots: 'No live bot activity', loadSitemap: 'Load Sitemap',
+        chartAiBreakdown: 'AI Source Breakdown', botRank: 'Bot Rankings', allPages: 'Page Traffic Analysis',
+        liveBots: 'Live Bot Activity', waitingBots: 'No live bot activity', waitingBotsHint: 'No bot visits in the last 30 minutes', loadSitemap: 'Load Sitemap',
         thPage: 'Page', thPageUpdated: 'Page updated', thAiVisits: 'AI visits', thHumanVisits: 'Human visits', thAiBots: 'AI Bots', thAiRatio: 'AI Ratio',
         thFamily: 'Family', thVisits: 'Visits', thPages: 'Pages', thLastSeen: 'Last seen',
-        scTotal: 'Total PV', scBot: 'AI Bot PV', scHuman: 'Human PV', scUv: 'Unique Visitors',
+        scTotal: 'Total PV', scBot: 'AI Bot PV', scHuman: 'Human PV', scUv: 'Human Visitors (UV)',
         last1d: 'Today', last7d: 'Last 7 days', last28d: 'Last 28 days', last90d: 'Last 90 days', custom: 'Custom',
         last30min: '(last 30 min)',
         selectSite: 'Select site', noData: 'No data', searchPages: 'Search pages...',
@@ -668,7 +668,7 @@
       if (!d || !d.total_pv) return;
       if (currentMetric === 'uv') {
         document.getElementById('overviewCards').innerHTML =
-          sc(t('scUv'), d.uv || 0, 'var(--primary)', lang === 'zh' ? '按设备指纹去重' : 'By device fingerprint') +
+          sc(t('scUv'), d.uv || 0, 'var(--primary)', lang === 'zh' ? '按设备指纹去重的独立访客数' : 'Unique visitors by device fingerprint') +
           sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)') +
           sc(t('scBot') + ' PV', d.bot_pv || 0, 'var(--amber)') +
           sc(t('scTotal') + ' PV', d.total_pv || 0);
@@ -676,7 +676,7 @@
         document.getElementById('overviewCards').innerHTML =
           sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
           sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') +
-          sc(t('scUv'), d.uv || 0, null, lang === 'zh' ? '按设备指纹去重' : 'By device fingerprint');
+          sc(t('scUv'), d.uv || 0, null, lang === 'zh' ? '按设备指纹去重的独立访客数' : 'Unique visitors by device fingerprint');
       }
     }
 
@@ -717,14 +717,12 @@
 
     function loadActiveUsers() {
       if (!currentSiteId) return;
-      fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=30')
+      fetch(API + '/dashboard/active-visitors?site_id=' + currentSiteId + '&minutes=30')
         .then(function(r) { return r.json(); })
         .then(function(json) {
-          var data = json.data || [];
-          var botCount = data.length;
-          var humanCount = overviewData.human_pv || 0;
-          document.getElementById('activeBotNum').textContent = botCount;
-          document.getElementById('activeHumanNum').textContent = humanCount;
+          var data = json.data || {};
+          document.getElementById('activeBotNum').textContent = data.active_bots || 0;
+          document.getElementById('activeHumanNum').textContent = data.active_humans || 0;
         })
         .catch(function() {
           document.getElementById('activeBotNum').textContent = '-';
@@ -874,6 +872,16 @@
         .then(function(r) { clearTimeout(timeout); return r.json(); })
         .then(function(json) {
           var data = json.data || [];
+          // If no data in 5 minutes, try 30 minutes
+          if (!data.length && !append) {
+            fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=30')
+              .then(function(r2) { return r2.json(); })
+              .then(function(json2) {
+                realtimeItems = json2.data || [];
+                renderRealtimeFeed();
+              });
+            return;
+          }
           if (append) {
             // Prepend new items, deduplicate by timestamp+bot+url
             var existing = {};
@@ -896,7 +904,7 @@
 
     function renderRealtimeFeed() {
       var el = document.getElementById('realtimeFeed');
-      if (!realtimeItems.length) { el.innerHTML = '<div class="empty"><p>' + t('waitingBots') + '</p></div>'; return; }
+      if (!realtimeItems.length) { el.innerHTML = '<div class="empty"><p>' + t('waitingBots') + '</p><p style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + t('waitingBotsHint') + '</p></div>'; return; }
       el.innerHTML = realtimeItems.map(function(r) {
         var tm = r.created_at ? r.created_at.split(' ')[1] || '' : '';
         var tip = BOT_INFO[r.bot_name] || '';
@@ -923,19 +931,26 @@
       var el = document.getElementById(id);
       if (!el) return;
       if (charts[id]) charts[id].dispose();
+      if (!labels.length) { el.innerHTML = '<div class="empty">' + t('noData') + '</div>'; return; }
       var chart = echarts.init(el);
       charts[id] = chart;
       var singlePoint = labels.length <= 1;
+      // For single point, duplicate the data to create a visible bar-like effect
+      var xLabels = singlePoint ? ['', labels[0], ''] : labels;
+      var seriesData = series.map(function(s) {
+        if (singlePoint) return { name: s.name, data: [null, s.data[0], null] };
+        return { name: s.name, data: s.data };
+      });
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 24, bottom: 52, left: 48, right: 16 },
-        xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
+        grid: { top: 24, bottom: 72, left: 48, right: 16 },
+        xAxis: { type: 'category', data: xLabels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
-        series: series.map(function(s) {
+        series: series.map(function(s, i) {
           return {
-            name: s.name, type: 'line', data: s.data,
-            smooth: false, showSymbol: singlePoint,
-            symbolSize: singlePoint ? 8 : 4,
+            name: s.name, type: 'line', data: seriesData[i].data,
+            smooth: false, showSymbol: true,
+            symbolSize: singlePoint ? 12 : 4,
             lineStyle: { width: 2, color: s.color },
             itemStyle: { color: s.color },
             areaStyle: s.area ? { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: s.color + '20' }, { offset: 1, color: s.color + '00' }] } } : undefined
@@ -954,7 +969,7 @@
       charts[id] = chart;
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 16, bottom: 52, left: 48, right: 16 },
+        grid: { top: 16, bottom: 72, left: 48, right: 16 },
         xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s) {

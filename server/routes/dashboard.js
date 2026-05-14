@@ -35,6 +35,15 @@ router.get('/realtime', (req, res) => {
   res.json({ success: true, data: rows, minutes });
 });
 
+// Active visitors: bot and human counts in last N minutes
+router.get('/active-visitors', (req, res) => {
+  const siteId = getSiteId(req);
+  if (!siteId) return res.status(400).json({ error: 'site_id required' });
+  const minutes = parseInt(req.query.minutes) || 30;
+  const data = queries.getActiveVisitors(getDb(), siteId, minutes);
+  res.json({ success: true, data, minutes });
+});
+
 // Pages ranking
 router.get('/pages', (req, res) => {
   const siteId = getSiteId(req);

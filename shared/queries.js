@@ -43,6 +43,17 @@ function getRealtime(db, siteId, minutes = 5) {
   `).all(siteId, since);
 }
 
+function getActiveVisitors(db, siteId, minutes = 30) {
+  const since = Math.floor(Date.now() / 1000) - minutes * 60;
+  return db.prepare(`
+    SELECT
+      COUNT(DISTINCT CASE WHEN is_bot = 1 THEN bot_name END) as active_bots,
+      COUNT(DISTINCT CASE WHEN is_bot = 0 AND visitor_id != '' THEN visitor_id END) as active_humans
+    FROM page_events
+    WHERE site_id = ? AND ts >= ?
+  `).get(siteId, since);
+}
+
 function getBots(db, siteId, hours = 24 * 7) {
   const since = Math.floor(Date.now() / 1000) - hours * 3600;
   return db.prepare(`
@@ -241,6 +252,7 @@ module.exports = {
   getOverview,
   getTrend,
   getRealtime,
+  getActiveVisitors,
   getBots,
   getPages,
   getVisitors,
