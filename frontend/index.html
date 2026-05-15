@@ -397,6 +397,7 @@
     var currentDays = 7;
     var currentMetric = 'pv'; // 'pv' or 'uv'
     var overviewData = {}; // store raw overview data for toggle
+    var overviewTrendData = []; // store trend data for metric toggle
     var allPageData = [];
     var allOverviewPageData = [];
     var overviewSort = { key: 'updated', dir: 'desc' };
@@ -661,6 +662,31 @@
       currentMetric = m;
       document.querySelectorAll('#pvUvToggle .lang-btn').forEach(function(b) { b.classList.toggle('active', b.textContent === m.toUpperCase()); });
       renderOverviewCards();
+      renderOverviewCharts();
+    }
+
+    function renderOverviewCharts() {
+      var data = overviewTrendData;
+      if (!data || !data.length) return;
+      if (currentMetric === 'uv') {
+        renderLineChart('chartAiTrend', data.map(function(d){return d.day;}), [
+          { name: 'AI PV', data: data.map(function(d){return d.bot;}), color: '#F9AB00' },
+          { name: 'Human UV', data: data.map(function(d){return d.uv;}), color: '#1A73E8' }
+        ]);
+        renderBarChart('chartBotHuman', data.map(function(d){return d.day;}), [
+          { name: 'AI PV', data: data.map(function(d){return d.bot;}), color: '#FDD663' },
+          { name: 'Human UV', data: data.map(function(d){return d.uv;}), color: '#AECBFA' }
+        ]);
+      } else {
+        renderLineChart('chartAiTrend', data.map(function(d){return d.day;}), [
+          { name: 'AI', data: data.map(function(d){return d.bot;}), color: '#F9AB00' },
+          { name: 'Human', data: data.map(function(d){return d.human;}), color: '#1A73E8' }
+        ]);
+        renderBarChart('chartBotHuman', data.map(function(d){return d.day;}), [
+          { name: 'AI', data: data.map(function(d){return d.bot;}), color: '#FDD663' },
+          { name: 'Human', data: data.map(function(d){return d.human;}), color: '#AECBFA' }
+        ]);
+      }
     }
 
     function renderOverviewCards() {
@@ -668,15 +694,15 @@
       if (!d || !d.total_pv) return;
       if (currentMetric === 'uv') {
         document.getElementById('overviewCards').innerHTML =
-          sc(t('scUv'), d.uv || 0, 'var(--primary)', lang === 'zh' ? '按设备指纹去重的独立访客数' : 'Unique visitors by device fingerprint') +
-          sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)') +
+          sc(lang === 'zh' ? '独立访客（UV）' : 'Unique Visitors (UV)', d.uv || 0, 'var(--primary)', lang === 'zh' ? '同一访客多次访问只计1次' : 'Each visitor counted only once') +
+          sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)', lang === 'zh' ? '排除爬虫后的独立人类访客' : 'Unique human visitors excluding bots') +
           sc(t('scBot') + ' PV', d.bot_pv || 0, 'var(--amber)') +
           sc(t('scTotal') + ' PV', d.total_pv || 0);
       } else {
         document.getElementById('overviewCards').innerHTML =
           sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
           sc(t('scHuman'), d.human_pv || 0, 'var(--primary)') +
-          sc(t('scUv'), d.uv || 0, null, lang === 'zh' ? '按设备指纹去重的独立访客数' : 'Unique visitors by device fingerprint');
+          sc(lang === 'zh' ? '独立访客（UV）' : 'Unique Visitors (UV)', d.uv || 0, null, lang === 'zh' ? '同一访客多次访问只计1次' : 'Each visitor counted only once');
       }
     }
 
@@ -688,15 +714,8 @@
       fetch(API + '/dashboard/trend?site_id=' + currentSiteId + '&days=' + currentDays)
         .then(function(r) { return r.json(); })
         .then(function(json) {
-          var data = json.data || [];
-          renderLineChart('chartAiTrend', data.map(function(d){return d.day;}), [
-            { name: 'AI', data: data.map(function(d){return d.bot;}), color: '#F9AB00' },
-            { name: 'Human', data: data.map(function(d){return d.human;}), color: '#1A73E8' }
-          ]);
-          renderBarChart('chartBotHuman', data.map(function(d){return d.day;}), [
-            { name: 'AI', data: data.map(function(d){return d.bot;}), color: '#FDD663' },
-            { name: 'Human', data: data.map(function(d){return d.human;}), color: '#AECBFA' }
-          ]);
+          overviewTrendData = json.data || [];
+          renderOverviewCharts();
         });
       fetch(API + '/dashboard/bots?site_id=' + currentSiteId + '&hours=' + hours)
         .then(function(r) { return r.json(); })
@@ -710,8 +729,13 @@
       fetch(API + '/dashboard/overview?site_id=' + currentSiteId + '&hours=' + hours)
         .then(function(r) { return r.json(); })
         .then(function(json) {
-          overviewData = json.data || {};
-          renderOverviewCards();
+          var d = json.data || {};
+          // Only re-render if data changed
+          if (d.total_pv !== overviewData.total_pv || d.bot_pv !== overviewData.bot_pv ||
+              d.human_pv !== overviewData.human_pv || d.uv !== overviewData.uv) {
+            overviewData = d;
+            renderOverviewCards();
+          }
         });
     }
 
@@ -721,8 +745,12 @@
         .then(function(r) { return r.json(); })
         .then(function(json) {
           var data = json.data || {};
-          document.getElementById('activeBotNum').textContent = data.active_bots || 0;
-          document.getElementById('activeHumanNum').textContent = data.active_humans || 0;
+          var newBots = data.active_bots || 0;
+          var newHumans = data.active_humans || 0;
+          var botEl = document.getElementById('activeBotNum');
+          var humanEl = document.getElementById('activeHumanNum');
+          if (botEl.textContent !== String(newBots)) botEl.textContent = newBots;
+          if (humanEl.textContent !== String(newHumans)) humanEl.textContent = newHumans;
         })
         .catch(function() {
           document.getElementById('activeBotNum').textContent = '-';
@@ -866,8 +894,11 @@
     // --- Realtime (append mode) ---
     function loadRealtime(append) {
       if (!currentSiteId) return;
+      if (!append) {
+        document.getElementById('realtimeFeed').innerHTML = '<div class="empty"><p style="color:var(--text-muted);">' + (lang === 'zh' ? '加载中...' : 'Loading...') + '</p></div>';
+      }
       var controller = new AbortController();
-      var timeout = setTimeout(function() { controller.abort(); }, 10000);
+      var timeout = setTimeout(function() { controller.abort(); }, 15000);
       fetch(API + '/dashboard/realtime?site_id=' + currentSiteId + '&minutes=5', { signal: controller.signal })
         .then(function(r) { clearTimeout(timeout); return r.json(); })
         .then(function(json) {
@@ -879,7 +910,8 @@
               .then(function(json2) {
                 realtimeItems = json2.data || [];
                 renderRealtimeFeed();
-              });
+              })
+              .catch(function() { realtimeItems = []; renderRealtimeFeed(); });
             return;
           }
           if (append) {
@@ -897,7 +929,10 @@
           clearTimeout(timeout);
           var el = document.getElementById('realtimeFeed');
           if (!realtimeItems.length) {
-            el.innerHTML = '<div class="empty"><p style="color:var(--red);">' + (err.name === 'AbortError' ? '加载超时' : t('loadFail')) + '</p></div>';
+            var msg = err.name === 'AbortError'
+              ? (lang === 'zh' ? '加载超时，请检查网络连接' : 'Loading timeout, check your connection')
+              : t('loadFail');
+            el.innerHTML = '<div class="empty"><p style="color:var(--red);">' + msg + '</p><p style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + (lang === 'zh' ? '点击右上角 Refresh 重试' : 'Click Refresh to retry') + '</p></div>';
           }
         });
     }
@@ -935,28 +970,29 @@
       var chart = echarts.init(el);
       charts[id] = chart;
       var singlePoint = labels.length <= 1;
-      // For single point, duplicate the data to create a visible bar-like effect
-      var xLabels = singlePoint ? ['', labels[0], ''] : labels;
+      // For single point, use bar chart with the single label
+      var xLabels = singlePoint ? [labels[0]] : labels;
       var seriesData = series.map(function(s) {
-        if (singlePoint) return { name: s.name, data: [null, s.data[0], null] };
+        if (singlePoint) return { name: s.name, data: [s.data[0]] };
         return { name: s.name, data: s.data };
       });
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 24, bottom: 72, left: 48, right: 16 },
-        xAxis: { type: 'category', data: xLabels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
+        grid: { top: 24, bottom: 80, left: 48, right: 16 },
+        xAxis: { type: 'category', data: xLabels, boundaryGap: singlePoint, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s, i) {
           return {
-            name: s.name, type: 'line', data: seriesData[i].data,
+            name: s.name, type: singlePoint ? 'bar' : 'line', data: seriesData[i].data,
             smooth: false, showSymbol: true,
             symbolSize: singlePoint ? 12 : 4,
             lineStyle: { width: 2, color: s.color },
-            itemStyle: { color: s.color },
+            itemStyle: { color: s.color, borderRadius: [2,2,0,0] },
+            barMaxWidth: 40,
             areaStyle: s.area ? { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: s.color + '20' }, { offset: 1, color: s.color + '00' }] } } : undefined
           };
         }),
-        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 4, icon: 'roundRect', itemWidth: 12, itemHeight: 3, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
+        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 24, icon: 'roundRect', itemWidth: 12, itemHeight: 3, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
       });
       window.addEventListener('resize', function() { chart.resize(); });
     }
@@ -969,13 +1005,13 @@
       charts[id] = chart;
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 16, bottom: 72, left: 48, right: 16 },
+        grid: { top: 16, bottom: 80, left: 48, right: 16 },
         xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s) {
           return { name: s.name, type: 'bar', data: s.data, itemStyle: { color: s.color, borderRadius: [2,2,0,0] }, barMaxWidth: 16 };
         }),
-        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 4, icon: 'roundRect', itemWidth: 12, itemHeight: 6, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
+        legend: series.length > 1 ? { data: series.map(function(s){return s.name;}), bottom: 24, icon: 'roundRect', itemWidth: 12, itemHeight: 6, textStyle: { color: '#5F6368', fontSize: 11 } } : { show: false }
       });
       window.addEventListener('resize', function() { chart.resize(); });
     }
