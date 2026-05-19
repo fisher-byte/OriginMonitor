@@ -14,7 +14,17 @@
     return null;
   })();
 
-  var API_URL = (scriptTag && scriptTag.src.replace(/[^/]*$/, 'api/collect')) || '/api/collect';
+  function resolveApiUrl() {
+    if (scriptTag && scriptTag.getAttribute('data-api-url')) {
+      return scriptTag.getAttribute('data-api-url');
+    }
+    if (scriptTag && scriptTag.src) {
+      return new URL('/api/collect', scriptTag.src).toString();
+    }
+    return '/api/collect';
+  }
+
+  var API_URL = resolveApiUrl();
   var SITE_ID = (scriptTag && scriptTag.getAttribute('data-site-id')) || '';
 
   if (!SITE_ID) {

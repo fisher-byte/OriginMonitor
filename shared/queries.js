@@ -10,7 +10,7 @@ function getOverview(db, siteId, hours = 24) {
       COUNT(*) as total_pv,
       SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) as bot_pv,
       SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) as human_pv,
-      COUNT(DISTINCT CASE WHEN is_bot = 0 AND visitor_id != '' THEN visitor_id END) as uv
+      COUNT(DISTINCT CASE WHEN is_bot = 0 THEN COALESCE(NULLIF(visitor_id, ''), NULLIF(ip || '|' || ua, '|')) END) as uv
     FROM page_events
     WHERE site_id = ? AND ts >= ?
   `).get(siteId, since);
@@ -24,7 +24,7 @@ function getTrend(db, siteId, days = 30) {
       COUNT(*) as total,
       SUM(CASE WHEN is_bot = 1 THEN 1 ELSE 0 END) as bot,
       SUM(CASE WHEN is_bot = 0 THEN 1 ELSE 0 END) as human,
-      COUNT(DISTINCT CASE WHEN is_bot = 0 AND visitor_id != '' THEN visitor_id END) as uv
+      COUNT(DISTINCT CASE WHEN is_bot = 0 THEN COALESCE(NULLIF(visitor_id, ''), NULLIF(ip || '|' || ua, '|')) END) as uv
     FROM page_events
     WHERE site_id = ? AND ts >= ?
     GROUP BY day
@@ -45,13 +45,25 @@ function getRealtime(db, siteId, minutes = 5) {
 
 function getActiveVisitors(db, siteId, minutes = 30) {
   const since = Math.floor(Date.now() / 1000) - minutes * 60;
-  return db.prepare(`
+  const active = db.prepare(`
     SELECT
       COUNT(DISTINCT CASE WHEN is_bot = 1 THEN bot_name END) as active_bots,
-      COUNT(DISTINCT CASE WHEN is_bot = 0 AND visitor_id != '' THEN visitor_id END) as active_humans
+      COUNT(DISTINCT CASE WHEN is_bot = 0 THEN COALESCE(NULLIF(visitor_id, ''), NULLIF(ip || '|' || ua, '|')) END) as active_humans
     FROM page_events
     WHERE site_id = ? AND ts >= ?
   `).get(siteId, since);
+  const latest = db.prepare(`
+    SELECT MAX(ts) as last_event_ts
+    FROM page_events
+    WHERE site_id = ?
+  `).get(siteId);
+  const lastEventTs = latest.last_event_ts || null;
+  return {
+    active_bots: active.active_bots,
+    active_humans: active.active_humans,
+    last_event_ts: lastEventTs,
+    last_event_age_minutes: lastEventTs ? Math.floor((Math.floor(Date.now() / 1000) - lastEventTs) / 60) : null,
+  };
 }
 
 function getBots(db, siteId, hours = 24 * 7) {
@@ -104,11 +116,11 @@ function getVisitors(db, siteId, hours = 24) {
   const overview = db.prepare(`
     SELECT
       COUNT(*) as pv,
-      COUNT(DISTINCT visitor_id) as uv,
+      COUNT(DISTINCT COALESCE(NULLIF(visitor_id, ''), NULLIF(ip || '|' || ua, '|'))) as uv,
       AVG(CASE WHEN stay_time > 0 THEN stay_time END) as avg_stay,
       AVG(CASE WHEN scroll_depth > 0 THEN scroll_depth END) as avg_scroll
     FROM page_events
-    WHERE site_id = ? AND ts >= ? AND is_bot = 0 AND visitor_id != ''
+    WHERE site_id = ? AND ts >= ? AND is_bot = 0
   `).get(siteId, since);
 
   const devices = db.prepare(`
@@ -146,7 +158,7 @@ function getVisitorTrend(db, siteId, days = 30) {
     SELECT
       date(ts, 'unixepoch', 'localtime') as day,
       COUNT(*) as pv,
-      COUNT(DISTINCT CASE WHEN visitor_id != '' THEN visitor_id END) as uv
+      COUNT(DISTINCT COALESCE(NULLIF(visitor_id, ''), NULLIF(ip || '|' || ua, '|'))) as uv
     FROM page_events
     WHERE site_id = ? AND ts >= ? AND is_bot = 0
     GROUP BY day

@@ -5,6 +5,8 @@
  */
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const sitemapHelpers = require('../routes/sitemap')._private;
 const { apiKeyAuth } = require('../middleware/auth');
 
@@ -63,6 +65,22 @@ function testSitemapHelpers() {
   const normalized = sitemapHelpers.normalizeUpdatedValue('2026-05-14T10:00:00+08:00');
   assert('可标准化更新时间', normalized.ts !== null, `got ${normalized.ts}`);
 
+  assert(
+    '可从 brief URL 推断内容时间',
+    sitemapHelpers.inferUpdatedFromPath('/updates/brief-20260303-1600') === '2026-03-03T16:00:00+08:00',
+    `got ${sitemapHelpers.inferUpdatedFromPath('/updates/brief-20260303-1600')}`
+  );
+  assert(
+    '可从 weekly URL 推断内容日期',
+    sitemapHelpers.inferUpdatedFromPath('/updates/weekly-2026-03-06') === '2026-03-06T00:00:00+08:00',
+    `got ${sitemapHelpers.inferUpdatedFromPath('/updates/weekly-2026-03-06')}`
+  );
+  assert(
+    '可从英文 weekly URL 推断内容日期',
+    sitemapHelpers.inferUpdatedFromPath('/en/updates/weekly-2026-03-06') === '2026-03-06T00:00:00+08:00',
+    `got ${sitemapHelpers.inferUpdatedFromPath('/en/updates/weekly-2026-03-06')}`
+  );
+
   const htmlMeta = '<html><head><meta property="article:modified_time" content="2026-05-14T09:30:00+08:00"></head></html>';
   assert(
     '可从 HTML meta 提取更新时间',
@@ -76,6 +94,14 @@ function testSitemapHelpers() {
     sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd) === '2026-05-13T18:00:00+08:00',
     `got ${sitemapHelpers.extractUpdatedFromHtml(htmlJsonLd)}`
   );
+}
+
+function testSdkSource() {
+  console.log('\n[0c] SDK 上报地址');
+  const sdkSource = fs.readFileSync(path.join(__dirname, '..', '..', 'sdk', 'tracker.js'), 'utf8');
+  assert('SDK 默认上报到根路径 /api/collect', sdkSource.indexOf("new URL('/api/collect', scriptTag.src)") !== -1);
+  assert('SDK 不再推导到 /sdk/api/collect', sdkSource.indexOf("replace(/[^/]*$/, 'api/collect')") === -1);
+  assert('SDK 支持 data-api-url 覆盖', sdkSource.indexOf("getAttribute('data-api-url')") !== -1);
 }
 
 function testAuthMiddleware() {
@@ -280,12 +306,27 @@ async function testDashboard() {
   assert('状态码 200', rt.status === 200);
   assert('有实时数据', rt.body.data.length > 0);
 
+  console.log('\n[14a] POST /api/collect — 历史事件不应进入最近 30 分钟');
+  const oldBot = await request('POST', '/api/collect', {
+    site_id: siteId,
+    ts: Math.floor(Date.now() / 1000) - 7 * 86400,
+    page_url: '/old-event',
+    ua: 'Mozilla/5.0 (compatible; GPTBot/1.0)',
+    events: [],
+  });
+  assert('历史事件写入成功', oldBot.body.success === true);
+  const rtAfterOld = await request('GET', `/api/dashboard/realtime?site_id=${siteId}&minutes=30`);
+  assert('历史事件不出现在实时列表', !rtAfterOld.body.data.some(r => r.page_url === '/old-event'));
+
   console.log('\n[14b] GET /api/dashboard/active-visitors');
   const av = await request('GET', `/api/dashboard/active-visitors?site_id=${siteId}&minutes=30`);
   assert('状态码 200', av.status === 200);
   assert('有 active_bots 字段', av.body.data.active_bots !== undefined);
   assert('有 active_humans 字段', av.body.data.active_humans !== undefined);
   assert('active_bots >= 1', av.body.data.active_bots >= 1);
+  assert('active_humans >= 1', av.body.data.active_humans >= 1);
+  assert('返回 last_event_ts', typeof av.body.data.last_event_ts === 'number');
+  assert('返回 last_event_age_minutes', typeof av.body.data.last_event_age_minutes === 'number');
 
   console.log('\n[15] GET /api/dashboard/trend');
   const trend = await request('GET', `/api/dashboard/trend?site_id=${siteId}&days=7`);
@@ -331,6 +372,7 @@ async function run() {
   try {
     testSitemapHelpers();
     testAuthMiddleware();
+    testSdkSource();
     await testSites();
     await testSiteDelete();
     await testCollect();
@@ -340,6 +382,12 @@ async function run() {
   } catch (err) {
     console.error('\n测试异常:', err.message);
     failed++;
+  }
+
+  if (siteId) {
+    console.log('\n[cleanup] DELETE /api/sites/:id — 清理测试站点');
+    const cleanup = await request('DELETE', `/api/sites/${siteId}`);
+    assert('测试站点已清理', cleanup.status === 200 || cleanup.status === 404, `got ${cleanup.status}`);
   }
 
   console.log(`\n=== 结果: ${passed} 通过, ${failed} 失败 ===`);

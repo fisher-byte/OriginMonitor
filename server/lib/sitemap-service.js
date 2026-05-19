@@ -122,6 +122,19 @@ function normalizeUpdatedValue(value) {
   return { value: trimmed, ts: ts };
 }
 
+function inferUpdatedFromPath(pathOnly) {
+  var path = String(pathOnly || '');
+  var briefMatch = path.match(/\/(?:[a-z]{2}\/)?updates\/brief-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(?:\/)?$/);
+  if (briefMatch) {
+    return briefMatch[1] + '-' + briefMatch[2] + '-' + briefMatch[3] + 'T' + briefMatch[4] + ':' + briefMatch[5] + ':00+08:00';
+  }
+  var weeklyMatch = path.match(/\/(?:[a-z]{2}\/)?updates\/weekly-(\d{4})-(\d{2})-(\d{2})(?:\/)?$/);
+  if (weeklyMatch) {
+    return weeklyMatch[1] + '-' + weeklyMatch[2] + '-' + weeklyMatch[3] + 'T00:00:00+08:00';
+  }
+  return '';
+}
+
 function extractUpdatedFromHtml(html) {
   if (!html) return '';
 
@@ -228,13 +241,14 @@ async function analyzeSitemap(db, siteId, domain, hours = 24 * 30) {
     if (seen[pathOnly]) continue;
     seen[pathOnly] = true;
 
-    var normalizedUpdated = normalizeUpdatedValue(entry.lastmod);
+    var inferredUpdated = normalizeUpdatedValue(inferUpdatedFromPath(pathOnly));
+    var normalizedUpdated = inferredUpdated.ts ? inferredUpdated : normalizeUpdatedValue(entry.lastmod);
     pages.push({
       url: pathOnly,
       fullUrl: entry.url,
       page_updated_at: normalizedUpdated.value,
       page_updated_ts: normalizedUpdated.ts,
-      page_updated_source: normalizedUpdated.ts ? 'sitemap_lastmod' : ''
+      page_updated_source: normalizedUpdated.ts ? (inferredUpdated.ts ? 'url_path' : 'sitemap_lastmod') : ''
     });
   }
 
@@ -310,5 +324,6 @@ module.exports = {
   parseSitemapEntries,
   parseSitemapUrls,
   normalizeUpdatedValue,
+  inferUpdatedFromPath,
   extractUpdatedFromHtml,
 };

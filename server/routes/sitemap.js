@@ -39,5 +39,6 @@ module.exports._private = {
   parseSitemapEntries: sitemapService.parseSitemapEntries,
   parseSitemapUrls: sitemapService.parseSitemapUrls,
   normalizeUpdatedValue: sitemapService.normalizeUpdatedValue,
+  inferUpdatedFromPath: sitemapService.inferUpdatedFromPath,
   extractUpdatedFromHtml: sitemapService.extractUpdatedFromHtml
 };

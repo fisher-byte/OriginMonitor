@@ -103,7 +103,7 @@
     .sc-value { font-size: 28px; font-weight: 400; margin-top: 4px; letter-spacing: -0.5px; }
 
     /* Active users bar */
-    .active-bar { display: flex; gap: 24px; align-items: center; padding: 14px 20px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 16px; }
+    .active-bar { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding: 14px 20px; background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 16px; }
     .active-item { display: flex; align-items: center; gap: 8px; }
     .active-dot { width: 10px; height: 10px; border-radius: 50%; animation: pulse 2s infinite; }
     .active-dot.amber { background: var(--amber); }
@@ -111,6 +111,7 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .active-num { font-size: 22px; font-weight: 500; letter-spacing: -0.5px; }
     .active-label { font-size: 12px; color: var(--text-sec); }
+    .active-hint { margin-left: auto; font-size: 12px; color: var(--text-muted); }
 
     /* Chart card */
     .chart-card { background: var(--bg); border: 1px solid var(--border-light); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
@@ -278,6 +279,7 @@
         <div class="active-bar" id="activeBar">
           <div class="active-item"><div class="active-dot amber"></div><div><div class="active-num" id="activeBotNum">-</div><div class="active-label">AI 爬虫 <span data-i18n="last30min">(最近30分钟)</span></div></div></div>
           <div class="active-item"><div class="active-dot blue"></div><div><div class="active-num" id="activeHumanNum">-</div><div class="active-label">人类访问 <span data-i18n="last30min">(最近30分钟)</span></div></div></div>
+          <div class="active-hint" id="activeFreshness"></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div></div>
@@ -694,10 +696,10 @@
       if (!d || !d.total_pv) return;
       if (currentMetric === 'uv') {
         document.getElementById('overviewCards').innerHTML =
-          sc(lang === 'zh' ? '独立访客（UV）' : 'Unique Visitors (UV)', d.uv || 0, 'var(--primary)', lang === 'zh' ? '同一访客多次访问只计1次' : 'Each visitor counted only once') +
-          sc(t('scHuman') + ' UV', d.uv || 0, 'var(--primary)', lang === 'zh' ? '排除爬虫后的独立人类访客' : 'Unique human visitors excluding bots') +
-          sc(t('scBot') + ' PV', d.bot_pv || 0, 'var(--amber)') +
-          sc(t('scTotal') + ' PV', d.total_pv || 0);
+          sc(lang === 'zh' ? '人类 UV' : 'Human UV', d.uv || 0, 'var(--primary)', lang === 'zh' ? '排除爬虫后的独立人类访客' : 'Unique human visitors excluding bots') +
+          sc(lang === 'zh' ? '人类 PV' : 'Human PV', d.human_pv || 0, 'var(--primary)') +
+          sc(lang === 'zh' ? 'AI 爬虫 PV' : 'AI Bot PV', d.bot_pv || 0, 'var(--amber)') +
+          sc(lang === 'zh' ? '总 PV' : 'Total PV', d.total_pv || 0);
       } else {
         document.getElementById('overviewCards').innerHTML =
           sc(t('scTotal'), d.total_pv || 0) + sc(t('scBot'), d.bot_pv || 0, 'var(--amber)') +
@@ -751,11 +753,31 @@
           var humanEl = document.getElementById('activeHumanNum');
           if (botEl.textContent !== String(newBots)) botEl.textContent = newBots;
           if (humanEl.textContent !== String(newHumans)) humanEl.textContent = newHumans;
+          renderActiveFreshness(data);
         })
         .catch(function() {
           document.getElementById('activeBotNum').textContent = '-';
           document.getElementById('activeHumanNum').textContent = '-';
+          document.getElementById('activeFreshness').textContent = '';
         });
+    }
+
+    function renderActiveFreshness(data) {
+      var el = document.getElementById('activeFreshness');
+      if (!el) return;
+      var age = data.last_event_age_minutes;
+      if (age === null || age === undefined) {
+        el.textContent = lang === 'zh' ? '暂无采集数据，请确认 SDK 已加载' : 'No collected data yet. Check SDK setup.';
+        return;
+      }
+      if ((data.active_bots || 0) > 0 || (data.active_humans || 0) > 0 || age <= 30) {
+        el.textContent = '';
+        return;
+      }
+      var ts = data.last_event_ts ? formatTs(data.last_event_ts) : '-';
+      el.textContent = lang === 'zh'
+        ? '暂无实时上报，最新数据截至 ' + ts + '，请确认 SDK 请求 /api/collect'
+        : 'No live reports. Latest data at ' + ts + '. Check SDK requests to /api/collect.';
     }
 
     function mergePagesData(crawlData, sitemapData) {
@@ -978,8 +1000,8 @@
       });
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 24, bottom: 80, left: 48, right: 16 },
-        xAxis: { type: 'category', data: xLabels, boundaryGap: singlePoint, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
+        grid: { top: 24, bottom: 80, left: 48, right: 56, containLabel: true },
+        xAxis: { type: 'category', data: xLabels, boundaryGap: singlePoint, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11, hideOverlap: true } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s, i) {
           return {
@@ -1005,8 +1027,8 @@
       charts[id] = chart;
       chart.setOption({
         tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#E0E0E0', borderWidth: 1, textStyle: { color: '#202124', fontSize: 12 } },
-        grid: { top: 16, bottom: 80, left: 48, right: 16 },
-        xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
+        grid: { top: 16, bottom: 80, left: 48, right: 56, containLabel: true },
+        xAxis: { type: 'category', data: labels, boundaryGap: false, axisLine: { lineStyle: { color: '#E0E0E0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11, hideOverlap: true } },
         yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F0F0' } }, axisLabel: { color: '#9AA0A6', fontSize: 11 } },
         series: series.map(function(s) {
           return { name: s.name, type: 'bar', data: s.data, itemStyle: { color: s.color, borderRadius: [2,2,0,0] }, barMaxWidth: 16 };
@@ -1108,6 +1130,10 @@
       var hh = String(d.getHours()).padStart(2, '0');
       var mm = String(d.getMinutes()).padStart(2, '0');
       return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
+    }
+    function formatTs(ts) {
+      if (!ts) return '-';
+      return formatPageUpdated(ts * 1000);
     }
 
     function sc(label, value, color, sub) {
